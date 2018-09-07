@@ -21,8 +21,8 @@
 #include <mutex>
 #include <cstddef>
 #include <functional>
-#include <condition_variable>
-
+#include <future>
+#include <memory>
 
 
 /*all defines*/
@@ -186,68 +186,71 @@ using promise_block = std::function<T()>;
 template<typename T, typename U>
 using promise_block_p = std::function<T(U)>;
 
+
 template<typename T>
 struct base_promise
 {
 
+    enum promise_status {
+        ready, timeout, defered
+    };
     base_promise(const promise_block<T>& block)
         : _queue(std::make_shared<serial_dispatch_queue>("promise")) {
-        _queue->dispatch([=](const promise_block<T>& block) {
+        auto p = std::make_shared<std::promise<T> >();
+        _future = p->get_future();
+        _queue->dispatch( [=](const promise_block<T>& block) {
             try {
                 T result = block();
-                set(result);
-            } catch (const std::exception& e) {
-                fail(e);
+                p->set_value(result);
+            } catch(...) {
+                try {
+                    p->set_exception(std::current_exception());
+                } catch(...) {}
             }
+        }, block);
+    }
 
+    template<typename LastType>
+    base_promise(base_promise<LastType>& from, const promise_block_p<T, LastType>& block)
+        : _queue(from._queue) {
+
+        auto last_future = std::make_shared<std::future<LastType>>(std::move(from._future));
+        auto next_promise = std::make_shared<std::promise<T> >( );
+        _future = next_promise->get_future();
+        _queue->dispatch([=](const promise_block_p<T, LastType>& block) {
+            try {
+                LastType last = last_future->get();
+                T next = block(last);
+                next_promise->set_value(next);
+            } catch(...) {
+                try {
+                    next_promise->set_exception(std::current_exception());
+                } catch(...) {}
+            }
         }, block);
     }
 
     base_promise(base_promise&& other)
-        : _queue(other._queue)
-        , _value(other._value)
-        , _exception(other._exception) {
+        : _queue(other._queue), _future(std::move(other._future)) {
         other._queue.reset();
-        other._value.reset();
-        other._exception.reset();
     }
 
     T get() {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        _promise_cv_ready.wait(lock, [=] {
-            return _value != nullptr || _exception != nullptr;
-        });
-
-        if(_value) {
-            return *_value;
-        }
-
-        if(_exception) {
-            throw std::runtime_error(_exception->what());
-        }
+        return _future.get();
     }
 
     void wait() {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        _promise_cv_ready.wait(lock, [=] {
-            return _value != nullptr || _exception != nullptr;
-        });
+        _future.wait();
     }
 
     template<typename Rep, typename Period>
-    bool wait_for(const std::chrono::duration<Rep, Period>& duration) {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        return _promise_cv_ready.wait_for(lock, duration, [=] {
-            return _value != nullptr || _exception != nullptr;
-        });
+    promise_status wait_for(const std::chrono::duration<Rep, Period>& duration) const {
+        return (promise_status) _future.wait_for(duration);
     }
 
     template<typename Clock, typename Duration>
-    bool wait_until(const std::chrono::time_point<Clock, Duration>& tp) {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        return _promise_cv_ready.wait_until(lock, tp, [=] {
-            return _value != nullptr || _exception != nullptr;
-        });
+    promise_status wait_until(const std::chrono::time_point<Clock, Duration>& tp) {
+       return (promise_status) _future.wait_until(tp);
     }
 
     template<typename NextType>
@@ -257,43 +260,10 @@ struct base_promise
 
 
 
-    template<typename LastType>
-    base_promise(base_promise<LastType>& from, const promise_block_p<T, LastType>& block)
-        : _queue(from._queue) {
-        _queue->dispatch([=, &from] (const promise_block_p<T, LastType>& block) {
-            try {
-                LastType last = from.get();
-                T result = block(last);
-                set(result);
-            } catch(const std::exception& e) {
-                fail(e);
-            }
-        }, block);
-    }
+
     std::shared_ptr<serial_dispatch_queue> _queue;
+    std::future<T> _future;
 
-private:
-    void set(T value) {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        _value = std::make_shared<T>(value);
-        _promise_cv_ready.notify_all();
-    }
-
-    void fail(const std::exception& e) {
-        std::unique_lock<std::mutex> lock(_promise_mutex);
-        _exception = std::make_shared<std::runtime_error>(e.what());
-        _promise_cv_ready.notify_all();
-    }
-
-
-
-
-
-private:
-    std::shared_ptr<T> _value;
-    std::mutex  _promise_mutex;
-    std::shared_ptr<std::exception> _exception;
-    std::condition_variable _promise_cv_ready;
 };
 
 
