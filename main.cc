@@ -1,23 +1,36 @@
 #include <iostream>
 
 #include <oyoung/dispatch.hpp>
+#include <ev++.h>
+#include <nlohmann/json.hpp>
+
+using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer, nlohmann::json>;
 
 int main(int argc, char *argv[]) try {
 
-    auto  w = oyoung::promise<int>([=]() -> int {
-        std::cout << "promise: 0" << std::endl;
-        return 1;
-    }).then<int>([](int n) -> int {
-       std::cout << "promise: 1" << std::endl;
-       return n + 1000;
-    }).then<std::string>([](int n) -> std::string {
-        std::cout << "promise: 2" << std::endl;
-        return "number: " + std::to_string(n);
+    default_event_loop loop{};
+
+    loop.on("start", [&loop](const default_event_loop::ev_data_t& data) {
+        std::cout << "started" << std::endl;
+        oyoung::dispatch(oyoung::get_global_queue(), [&loop] {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            loop.emit("stop");
+        });
     });
 
-    std::cout << w.get() << std::endl;
+    loop.on("stop", [&loop](const default_event_loop::ev_data_t& data) {
+        std::cout << "stopped" << std::endl;
+        oyoung::dispatch(oyoung::get_global_queue(), [&loop] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            loop.emit("start");
+        });
+    });
 
-    return 0;
+
+    loop.emit("start");
+
+
+    return loop.exec();
 } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
 }

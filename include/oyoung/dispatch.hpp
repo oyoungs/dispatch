@@ -15,6 +15,7 @@
 #define OYOUNG_DISPATCH_HPP
 
 /* all std includes */
+#include <map>
 #include <string>
 #include <queue>
 #include <thread>
@@ -99,9 +100,6 @@ void dispatch(Q& queue, Fn&& func, Args&& ...args)
    queue.dispatch(func, std::forward<Args>(args)...);
 }
 
-using serial_dispatch_queue = dispatch_queue<1ul>;
-
-using concurrent_dispatch_queue = dispatch_queue<4ul>;
 
 struct base_dispatch_queue
 {
@@ -179,6 +177,17 @@ private:
     std::thread _internal_thread[N];
     std::queue<std::function<void()>> _task_queue;
 };
+
+using serial_dispatch_queue = dispatch_queue<1ul>;
+
+using concurrent_dispatch_queue = dispatch_queue<4ul>;
+
+concurrent_dispatch_queue& get_global_queue()
+{
+    static concurrent_dispatch_queue global_queue("global");
+    return global_queue;
+}
+
 
 template<typename T>
 using promise_block = std::function<T()>;
@@ -271,6 +280,171 @@ template<typename T>
 base_promise<T> promise(const promise_block<T>& block) {
     return base_promise<T>(block);
 }
+   
+
+template <typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER, typename EV_DATA>
+struct event_loop
+{
+  using ev_loop_t = EV_LOOP;
+  using ev_io_t = EV_IO;
+  using ev_async_t = EV_ASYNC;
+  using ev_timer_t = EV_TIMER;
+  using ev_data_t = EV_DATA;
+
+  event_loop(const event_loop&) = delete;
+
+  event_loop() : ev_code(0), ev_loop(), ev_io(ev_loop), ev_async(ev_loop)
+  {
+      ev_io.set(this);
+      ev_async.set(this);
+      ev_async.start();
+  }
+
+  event_loop&operator=(const event_loop&) = delete;
+
+
+  int exec()
+  {
+      ev_loop.run(0);
+      return ev_code;
+  }
+
+
+  void emit(const std::string& name, const ev_data_t & data = ev_data_t{})
+  {
+      auto ev_data = std::make_shared<EV_DATA>(std::move(data));
+      auto ev_item = std::make_tuple(name, ev_data);
+      std::unique_lock<std::mutex> lock(queue_lock);
+      queue.push(ev_item);
+      ev_async.send();
+      queue_not_empty.notify_one();
+  }
+
+
+  void on(const std::string& name, const std::function<void(const EV_DATA&)>& listener)
+  {
+      listeners[name].emplace_back(listener);
+  }
+
+  void start(int descriptor, int event)
+  {
+      ev_io.start(descriptor, event);
+  }
+
+  void break_loop()
+  {
+      ev_loop.break_loop();
+  }
+
+  template <typename Rep, typename Period>
+  uint64_t set_timeout(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& delay)
+  {
+      auto timer = std::make_shared<ev_timer_t >(ev_loop);
+      timer->set(this);
+      timer->start(std::chrono::duration_cast<std::chrono::milliseconds>(delay).count() / 1000.0, 0);
+      timers.emplace_back(std::make_tuple(timer, func));
+
+      return reinterpret_cast<uint64_t >(timer.get());
+  }
+
+  void clear_timer(uint64_t id)
+  {
+      auto timer = reinterpret_cast<ev_timer_t *>(id);
+      for (int i = 0, size = timers.size(); i < size; ++i) {
+          auto ev_timer = std::get<0>(timers[i]);
+          if(ev_timer.get() == timer) {
+              ev_timer->stop();
+              break;
+          }
+      }
+  }
+
+  template <typename Rep, typename Period>
+  uint64_t set_interval(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& repeat)
+  {
+      auto timer = std::make_shared<ev_timer_t >(ev_loop);
+      timer->set(this);
+      timer->start(0, std::chrono::duration_cast<std::chrono::milliseconds>(repeat).count() / 1000.0);
+      timers.emplace_back(std::make_tuple(timer, func));
+      return reinterpret_cast<uint64_t >(timer.get());
+  }
+
+
+
+private:
+
+  void operator()(ev_io_t & io, int event)
+  {
+      emit("io", {
+          {"descriptor", io.fd},
+          {"event", event}
+      });
+  }
+
+  void operator()(ev_async_t & async, int event)
+  {
+      std::tuple<std::string, std::shared_ptr<EV_DATA>> ev_item;
+      {
+          std::unique_lock<std::mutex> lock(queue_lock);
+          queue_not_empty.wait(lock, [=] { return !queue.empty(); });
+          if(!queue.empty()) {
+              ev_item = queue.front();
+              queue.pop();
+          }
+      }
+
+      auto name = std::get<0>(ev_item);
+
+      if(name.empty()) return;
+
+      auto ev_data = std::get<1>(ev_item);
+
+      if(ev_data) {
+          for(auto func: listeners[name]) {
+              func(*ev_data);
+          }
+      }
+  }
+
+  void operator()(ev_timer_t & ev_timer, int event) {
+      int select_timer_index = 0;
+      for(auto i = 0ul, size = timers.size(); i < size; ++i) {
+          auto  tuple = timers[i];
+          auto  timer = std::get<0>(tuple);
+          if(timer && &ev_timer == timer.get()) {
+              auto func = std::get<1>(tuple);
+              if(func) {
+                  func();
+              }
+
+              select_timer_index = i;
+              break;
+          }
+      }
+
+      if(! ev_timer.is_active()) {
+          timers.erase(timers.begin() + select_timer_index);
+      }
+  }
+
+
+
+
+private:
+
+  int           ev_code;
+  ev_loop_t     ev_loop;
+  ev_io_t       ev_io;
+  ev_async_t    ev_async;
+
+  std::vector<std::tuple<std::shared_ptr<ev_timer_t>, std::function<void()> > > timers;
+
+
+  std::mutex queue_lock;
+  std::condition_variable queue_not_empty;
+  std::queue<std::tuple<std::string, std::shared_ptr<EV_DATA> > > queue;
+  std::map<std::string, std::vector<std::function<void(const EV_DATA&)> > > listeners;
+};
 
 }
 
