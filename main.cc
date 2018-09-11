@@ -6,21 +6,24 @@
 
 using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char *argv[]) /*try*/ {
 
     default_event_loop loop{};
 
 
-    auto signal = [=](std::shared_ptr<void> argument) {
-        auto arg = std::static_pointer_cast<nlohmann::json>(argument);
-        if(arg) {
-            std::cout << arg->dump() << std::endl;
-        }
+    auto signal = [=](const oyoung::any& argument) {
+        auto arg = oyoung::any_cast<nlohmann::json> (argument);
+        std::cout << arg.dump() << std::endl;
     };
 
     loop.on("start", signal);
 
     loop.on("signal", signal);
+
+    loop.on("exception", [=] (const oyoung::any& argument) {
+        auto what = oyoung::any_cast<std::string>(argument);
+        std::cout << what << std::endl;
+    });
 
 
 
@@ -35,6 +38,6 @@ int main(int argc, char *argv[]) try {
 
     return loop.exec();
 
-} catch (const std::exception& e) {
+} /*catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
-}
+}*/

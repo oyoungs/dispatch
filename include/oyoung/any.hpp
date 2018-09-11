@@ -23,7 +23,7 @@ namespace oyoung
     template<typename T>
     struct place_holder: public holder
     {
-        place_holder(const T &v) : value(v) {}
+        place_holder(const T& v): value(v) {}
 
         std::string type_name() const override
         {
@@ -43,8 +43,8 @@ namespace oyoung
         any() {}
 
         template<typename T>
-        any(T&& value)
-        : _holder(std::make_shared<place_holder<T>>(value)) {}
+        any(const T& value)
+            : _holder(std::make_shared<place_holder<T>>(value)) {}
         
         any(const char *str): _holder(std::make_shared<place_holder<std::string>>(str)) {}
         
@@ -98,6 +98,10 @@ namespace oyoung
             return _holder && _holder->type_name() == typeid(std::string).name();
         }
         
+        operator bool() const noexcept
+        {
+            return not is_null();
+        }
 
 
         
