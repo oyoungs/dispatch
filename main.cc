@@ -4,7 +4,7 @@
 #include <ev++.h>
 #include <nlohmann/json.hpp>
 
-using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer, nlohmann::json>;
+using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
 
 int main(int argc, char *argv[]) try {
 

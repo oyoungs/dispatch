@@ -301,14 +301,13 @@ thread_local base_ev_loop* base_ev_loop::global = nullptr;
    
 
 
-template <typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER, typename EV_DATA>
+template <typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER>
 struct event_loop: public base_ev_loop
 {
   using ev_loop_t = EV_LOOP;
   using ev_io_t = EV_IO;
   using ev_async_t = EV_ASYNC;
   using ev_timer_t = EV_TIMER;
-  using ev_data_t = EV_DATA;
 
   event_loop(const event_loop&) = delete;
 
@@ -339,10 +338,10 @@ struct event_loop: public base_ev_loop
       queue_not_empty.notify_one();
   }
 
-
-  void emit(const std::string& name, const ev_data_t & data = ev_data_t{})
+  template<typename T>
+  void emit(const std::string& name, const T & data = T{})
   {
-      auto ev_data = std::make_shared<ev_data_t>(std::move(data));
+      auto ev_data = std::make_shared<T>(std::move(data));
       emit(name, std::static_pointer_cast<void>(ev_data));
 
   }
