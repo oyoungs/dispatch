@@ -10,27 +10,31 @@ int main(int argc, char *argv[]) try {
 
     default_event_loop loop{};
 
-    loop.on("start", [&loop](const default_event_loop::ev_data_t& data) {
-        std::cout << "started" << std::endl;
-        oyoung::dispatch(oyoung::get_global_queue(), [&loop] {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            loop.emit("stop");
-        });
+
+    auto signal = [=](std::shared_ptr<void> argument) {
+        auto arg = std::static_pointer_cast<nlohmann::json>(argument);
+        if(arg) {
+            std::cout << arg->dump() << std::endl;
+        }
+    };
+
+    loop.on("start", signal);
+
+    loop.on("signal", signal);
+
+
+
+    loop.emit("start", nlohmann::json{ {"name", "SB"} });
+
+    std::signal(SIGTERM, [](int sig)->void {
+        auto loop = dynamic_cast<default_event_loop *>(oyoung::base_ev_loop::global);
+        loop->emit("signal", nlohmann::json {{"signal", sig}});
+        loop->break_loop();
     });
-
-    loop.on("stop", [&loop](const default_event_loop::ev_data_t& data) {
-        std::cout << "stopped" << std::endl;
-        oyoung::dispatch(oyoung::get_global_queue(), [&loop] {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            loop.emit("start");
-        });
-    });
-
-
-    loop.emit("start");
 
 
     return loop.exec();
+
 } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
 }

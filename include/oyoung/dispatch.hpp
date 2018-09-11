@@ -24,6 +24,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <csignal>
 
 
 /*all defines*/
@@ -280,10 +281,28 @@ template<typename T>
 base_promise<T> promise(const promise_block<T>& block) {
     return base_promise<T>(block);
 }
+
+struct base_ev_loop
+{
+    thread_local static base_ev_loop *global;
+
+    base_ev_loop() {
+        global = this;
+
+    }
+
+    virtual void on(const std::string& name, const std::function<void(std::shared_ptr<void>)>& listener) = 0;
+    virtual void emit(const std::string& name, std::shared_ptr<void> argument) = 0;
+    virtual int exec() { return 0; }
+    virtual ~base_ev_loop() {}
+};
+
+thread_local base_ev_loop* base_ev_loop::global = nullptr;
    
 
+
 template <typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER, typename EV_DATA>
-struct event_loop
+struct event_loop: public base_ev_loop
 {
   using ev_loop_t = EV_LOOP;
   using ev_io_t = EV_IO;
@@ -293,47 +312,68 @@ struct event_loop
 
   event_loop(const event_loop&) = delete;
 
-  event_loop() : ev_code(0), ev_loop(), ev_io(ev_loop), ev_async(ev_loop)
+  event_loop()
+      : ev_code(0)
+      , ev_loop(std::make_shared<ev_loop_t>())
+      , ev_async(std::make_shared<ev_async_t>(*ev_loop))
   {
-      ev_io.set(this);
-      ev_async.set(this);
-      ev_async.start();
+      ev_async->set(this);
+      ev_async->start();
   }
 
   event_loop&operator=(const event_loop&) = delete;
 
 
-  int exec()
+  int exec() override
   {
-      ev_loop.run(0);
+      ev_loop->run(0);
       return ev_code;
+  }
+
+  void emit(const std::string& name, std::shared_ptr<void> argument) override
+  {
+      auto ev_item = std::make_tuple(name, argument);
+      std::unique_lock<std::mutex> lock(queue_lock);
+      queue.push(ev_item);
+      ev_async->send();
+      queue_not_empty.notify_one();
   }
 
 
   void emit(const std::string& name, const ev_data_t & data = ev_data_t{})
   {
-      auto ev_data = std::make_shared<EV_DATA>(std::move(data));
-      auto ev_item = std::make_tuple(name, ev_data);
-      std::unique_lock<std::mutex> lock(queue_lock);
-      queue.push(ev_item);
-      ev_async.send();
-      queue_not_empty.notify_one();
+      auto ev_data = std::make_shared<ev_data_t>(std::move(data));
+      emit(name, std::static_pointer_cast<void>(ev_data));
+
   }
 
-
-  void on(const std::string& name, const std::function<void(const EV_DATA&)>& listener)
+  void on(const std::string &name, const std::function<void (std::shared_ptr<void>)> &listener) override
   {
-      listeners[name].emplace_back(listener);
+     listeners[name].emplace_back(listener);
   }
 
   void start(int descriptor, int event)
   {
-      ev_io.start(descriptor, event);
+      auto ev_io = std::make_shared<ev_io_t>(*ev_loop);
+      ev_io->set(this);
+      ev_io->start(descriptor, event);
+      ev_ios[descriptor] = ev_io;
+  }
+
+  void stop(int descriptor)
+  {
+      if(auto ev_io = ev_ios[descriptor]) {
+          ev_io->stop();
+      }
+
+      ev_ios.erase(descriptor);
   }
 
   void break_loop()
   {
-      ev_loop.break_loop();
+      if(ev_loop) {
+          ev_loop->break_loop();
+      }
   }
 
   template <typename Rep, typename Period>
@@ -370,6 +410,7 @@ struct event_loop
   }
 
 
+  ~event_loop() override {}
 
 private:
 
@@ -383,7 +424,7 @@ private:
 
   void operator()(ev_async_t & async, int event)
   {
-      std::tuple<std::string, std::shared_ptr<EV_DATA>> ev_item;
+      std::tuple<std::string, std::shared_ptr<void>> ev_item;
       {
           std::unique_lock<std::mutex> lock(queue_lock);
           queue_not_empty.wait(lock, [=] { return !queue.empty(); });
@@ -401,7 +442,7 @@ private:
 
       if(ev_data) {
           for(auto func: listeners[name]) {
-              func(*ev_data);
+              func(ev_data);
           }
       }
   }
@@ -433,17 +474,17 @@ private:
 private:
 
   int           ev_code;
-  ev_loop_t     ev_loop;
-  ev_io_t       ev_io;
-  ev_async_t    ev_async;
+  std::shared_ptr<ev_loop_t>                    ev_loop;
+  std::map<int, std::shared_ptr<ev_io_t>>       ev_ios;
+  std::shared_ptr<ev_async_t>                   ev_async;
 
   std::vector<std::tuple<std::shared_ptr<ev_timer_t>, std::function<void()> > > timers;
 
 
   std::mutex queue_lock;
   std::condition_variable queue_not_empty;
-  std::queue<std::tuple<std::string, std::shared_ptr<EV_DATA> > > queue;
-  std::map<std::string, std::vector<std::function<void(const EV_DATA&)> > > listeners;
+  std::queue<std::tuple<std::string, std::shared_ptr<void> > > queue;
+  std::map<std::string, std::vector<std::function<void(std::shared_ptr<void>)> > > listeners;
 };
 
 }
