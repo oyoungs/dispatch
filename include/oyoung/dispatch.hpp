@@ -401,7 +401,7 @@ struct event_loop: public base_ev_loop
   template <typename Rep, typename Period>
   uint64_t set_interval(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& repeat)
   {
-      auto timer = std::make_shared<ev_timer_t >(ev_loop);
+      auto timer = std::make_shared<ev_timer_t >(*ev_loop);
       timer->set(this);
       timer->start(0, std::chrono::duration_cast<std::chrono::milliseconds>(repeat).count() / 1000.0);
       timers.emplace_back(std::make_tuple(timer, func));

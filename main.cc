@@ -1,44 +1,77 @@
 #include <iostream>
 
+
+#include <oyoung/net.hpp>
 #include <oyoung/dispatch.hpp>
 #include <ev++.h>
-#include <nlohmann/json.hpp>
 
 using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
 
 int main(int argc, char *argv[]) /*try*/ {
 
-    default_event_loop loop{};
+    default_event_loop loop {};
+
+    oyoung::net::tcp::default_server server("0.0.0.0", 9090);
+
+    std::map<int, std::shared_ptr<oyoung::net::tcp::default_client>> clients;
+
+    loop.on("io", [&](const oyoung::any& argument) {
+
+        auto tuple = oyoung::any_cast<std::tuple<int, int>>(argument);
+
+        auto descriptor = std::get<0>(tuple);
+
+        if(descriptor == server.descriptor()) {
+
+            auto client = server.accept(1);
+
+            if(client) {
+                std::cout << "new client: " << client->address() << ": " << client->port() << "(" << client->descriptor() << ")" << std::endl;
+
+                loop.start(client->descriptor(), ev::READ);
+                clients[client->descriptor()] = client;
+            }
+
+        } else {
 
 
-    auto start = [=](const oyoung::any& argument) {
-        auto arg = oyoung::any_cast<nlohmann::json> (argument);
-        std::cout << arg.dump() << std::endl;
-    };
+            auto client = clients[descriptor];
 
-    loop.on("start", start);
+            if(client) {
 
-    loop.on("signal", start);
+                auto length = client->bytes_available();
 
-    loop.on("exception", [=] (const oyoung::any& argument) {
-        auto what = oyoung::any_cast<std::string>(argument);
-        std::cout << what << std::endl;
+                auto result = client->read(length);
+
+                if(result.success()) {
+                    if(result.empty() ) {
+                        std::cout << client->port() << ": " << std::string(result.begin(), result.end()) << std::endl;
+                    } else {
+                        std::cout << client->port() << ": " << std::string(result.begin(), result.end()) << std::flush;
+                    }
+                } else {
+                    if(result.error() == oyoung::net::socket_error::connection_closed) {
+                        loop.stop(descriptor);
+                        std::cout << "client(" << client->port() << ", " << descriptor <<") is closed" << std::endl;
+                    } else {
+                        std::cout << "message: " << result.message() << std::endl;
+                    }
+                }
+            }
+
+        }
+
     });
 
+    auto result = server.listen();
 
+    if(result.success()) {
+        loop.start(server.descriptor(), ev::READ);
+    }
 
-    loop.emit("start", nlohmann::json{ {"name", "SB"} });
-
-    auto signal_handle = [](int sig)->void {
-        auto loop = dynamic_cast<default_event_loop *>(oyoung::base_ev_loop::global);
-        loop->emit("signal", nlohmann::json {{"signal", sig}});
-        loop->break_loop();
-    };
-
-    std::signal(SIGTERM, signal_handle);
-    std::signal(SIGINT,signal_handle);
-    std::signal(SIGKILL,signal_handle);
-
+    loop.set_interval([] {
+        std::cout << "loop is running" << std::endl;
+    }, std::chrono::seconds(1));
 
 
     return loop.exec();
