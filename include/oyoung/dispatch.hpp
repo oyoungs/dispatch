@@ -343,7 +343,6 @@ struct event_loop: public base_ev_loop
       std::unique_lock<std::mutex> lock(queue_lock);
       queue.push(ev_item);
       ev_async->send();
-      queue_not_empty.notify_one();
   }
 
   void on(const std::string &name, const std::function<void (const any&)> &listener) override
@@ -420,28 +419,29 @@ private:
 
   void operator()(ev_async_t & async, int event)
   {
-      std::tuple<std::string, any> ev_item;
-      {
-          std::unique_lock<std::mutex> lock(queue_lock);
-          queue_not_empty.wait(lock, [=] { return !queue.empty(); });
-          if(!queue.empty()) {
-              ev_item = queue.front();
-              queue.pop();
+      while(not queue.empty()) {
+          std::tuple<std::string, any> ev_item;
+          {
+              std::unique_lock<std::mutex> lock(queue_lock);
+              if(!queue.empty()) {
+                  ev_item = queue.front();
+                  queue.pop();
+              }
           }
-      }
 
-      auto name = std::get<0>(ev_item);
+          auto name = std::get<0>(ev_item);
 
-      if(name.empty()) return;
+          if(name.empty()) return;
 
-      auto ev_data = std::get<1>(ev_item);
+          auto ev_data = std::get<1>(ev_item);
 
-      if(ev_data) {
-          for(auto func: listeners[name]) {
-              try {
-                func(ev_data);
-              } catch(const std::exception& e) {
-                  emit("exception", e.what());
+          if(ev_data) {
+              for(auto func: listeners[name]) {
+                  try {
+                    func(ev_data);
+                  } catch(const std::exception& e) {
+                      emit("exception", e.what());
+                  }
               }
           }
       }
@@ -482,7 +482,6 @@ private:
 
 
   std::mutex queue_lock;
-  std::condition_variable queue_not_empty;
   std::queue<std::tuple<std::string, any> > queue;
   std::map<std::string, std::vector<std::function<void(const any&)> > > listeners;
 };

@@ -7,6 +7,9 @@
 #ifndef OYOUNG_NET_HPP
 #define OYOUNG_NET_HPP
 
+#include <oyoung/any.hpp>
+
+#include <map>
 #include <string>
 #include <vector>
 #include <memory>
@@ -141,6 +144,17 @@ struct result
     const String message() const
     {
         return _message;
+    }
+
+
+    Bytes& bytes()
+    {
+        return _data_bytes;
+    }
+
+    const Bytes& bytes() const
+    {
+        return _data_bytes;
     }
 
     UInt8& operator[](std::size_t index)
@@ -567,8 +581,86 @@ namespace tcp {
         }
     };
 
+
     using default_client = client<unix_tcp_socket_ctrl>;
-    using default_server = server<unix_tcp_socket_ctrl>;
+
+
+
+    template<typename L>
+    struct default_server: public server<unix_tcp_socket_ctrl>
+    {
+
+
+        default_server(const String& address, Int32 port, L& loop)
+            : server(address, port), loop(loop), _read_event(0) {}
+
+        void set_read_event(int event)
+        {
+            _read_event = event;
+        }
+
+        void start()
+        {
+            loop.on("io", [=](const any& argument ) {
+                auto tuple = any_cast<std::tuple<int, int>>(argument);
+
+                auto fd = std::get<0>(tuple);
+
+                if(fd == descriptor()) {
+                    auto client = accept(10);
+                    if(client) {
+                        loop.emit ("accept", client);
+                    }
+                } else {
+                    auto client = _accepted_clients[fd];
+                    if(client) {
+                        auto length = client->bytes_available();
+                        auto result = client->read(length);
+                        if(result.success()) {
+                            auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
+                            loop.emit ("data",  bytes);
+                        } else if(result.error() == socket_error::connection_closed) {
+                            loop.emit ("close", client);
+                        } else {
+                            loop.emit ("error", result.message());
+                        }
+                    }
+                }
+
+            });
+
+            loop.on("accept", [=](const any& argument) {
+                auto client = any_cast<std::shared_ptr<default_client>>(argument);
+                if(client) {
+                    loop.start(client->descriptor(), _read_event);
+                    _accepted_clients[client->descriptor()] = client;
+                }
+            });
+
+            loop.on("close", [=](const any& argument){
+                auto client = any_cast<std::shared_ptr<default_client>>(argument);
+                auto descriptor = client ? client->descriptor() : bad_descriptor;
+                if(descriptor != bad_descriptor) {
+                    loop.stop(descriptor);
+                    _accepted_clients.erase(descriptor);
+                }
+            });
+
+            if(listen().success()) {
+                loop.start(descriptor(), _read_event);
+            }
+        }
+
+        Int32 count() const
+        {
+            return _accepted_clients.size();
+        }
+
+    private:
+        L& loop;
+        int _read_event;
+        std::map<int, std::shared_ptr<default_client>> _accepted_clients;
+    };
 #endif
 
 }

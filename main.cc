@@ -11,66 +11,38 @@ int main(int argc, char *argv[]) /*try*/ {
 
     default_event_loop loop {};
 
-    oyoung::net::tcp::default_server server("0.0.0.0", 9090);
+    oyoung::net::tcp::default_server<default_event_loop> server("0.0.0.0", 9090, loop);
 
-    std::map<int, std::shared_ptr<oyoung::net::tcp::default_client>> clients;
+    server.set_read_event(ev::READ);
 
-    loop.on("io", [&](const oyoung::any& argument) {
 
-        auto tuple = oyoung::any_cast<std::tuple<int, int>>(argument);
+    loop.on("accept", [=](const oyoung::any& argument) {
+        auto client = oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument);
+        if(client) std::cout << client->address() << ": " << client->port() << " connected" << std::endl;
+    });
 
-        auto descriptor = std::get<0>(tuple);
+    loop.on("data", [](const oyoung::any& argument) {
+        std::cerr << "on data" << std::endl;
 
-        if(descriptor == server.descriptor()) {
-
-            auto client = server.accept(1);
-
-            if(client) {
-                std::cout << "new client: " << client->address() << ": " << client->port() << "(" << client->descriptor() << ")" << std::endl;
-
-                loop.start(client->descriptor(), ev::READ);
-                clients[client->descriptor()] = client;
-            }
-
+        auto bytes = oyoung::any_cast<std::shared_ptr<oyoung::net::Bytes>>(argument);
+        if(bytes) {
+            std::cout << oyoung::net::String(bytes->begin(), bytes->end()) << std::flush;
         } else {
-
-
-            auto client = clients[descriptor];
-
-            if(client) {
-
-                auto length = client->bytes_available();
-
-                auto result = client->read(length);
-
-                if(result.success()) {
-                    if(result.empty() ) {
-                        std::cout << client->port() << ": " << std::string(result.begin(), result.end()) << std::endl;
-                    } else {
-                        std::cout << client->port() << ": " << std::string(result.begin(), result.end()) << std::flush;
-                    }
-                } else {
-                    if(result.error() == oyoung::net::socket_error::connection_closed) {
-                        loop.stop(descriptor);
-                        std::cout << "client(" << client->port() << ", " << descriptor <<") is closed" << std::endl;
-                    } else {
-                        std::cout << "message: " << result.message() << std::endl;
-                    }
-                }
-            }
-
+            std::cout << "no data" << std::endl;
         }
 
     });
 
-    auto result = server.listen();
+    loop.on("close", [](const oyoung::any& argument) {
+       std::cout << oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument)->descriptor() << " closed" << std::endl;
+    });
 
-    if(result.success()) {
-        loop.start(server.descriptor(), ev::READ);
-    }
+    server.start();
 
-    loop.set_interval([] {
-        std::cout << "loop is running" << std::endl;
+
+
+    loop.set_interval([&] {
+        std::cout << "loop is running, client count: " << server.count() << std::endl;
     }, std::chrono::seconds(1));
 
 
