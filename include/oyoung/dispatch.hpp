@@ -291,7 +291,12 @@ struct base_ev_loop
 
     base_ev_loop() {
         global = this;
+    }
 
+    template<typename T>
+    void emit(const std::string& name, const T & data = T{})
+    {
+        emit(name, any(data));
     }
 
     virtual void on(const std::string& name, const std::function<void(const any&)>& listener) = 0;
@@ -339,13 +344,6 @@ struct event_loop: public base_ev_loop
       queue.push(ev_item);
       ev_async->send();
       queue_not_empty.notify_one();
-  }
-
-  template<typename T>
-  void emit(const std::string& name, const T & data = T{})
-  {
-      emit(name, any(data));
-
   }
 
   void on(const std::string &name, const std::function<void (const any&)> &listener) override

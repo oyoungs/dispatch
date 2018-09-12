@@ -11,14 +11,14 @@ int main(int argc, char *argv[]) /*try*/ {
     default_event_loop loop{};
 
 
-    auto signal = [=](const oyoung::any& argument) {
+    auto start = [=](const oyoung::any& argument) {
         auto arg = oyoung::any_cast<nlohmann::json> (argument);
         std::cout << arg.dump() << std::endl;
     };
 
-    loop.on("start", signal);
+    loop.on("start", start);
 
-    loop.on("signal", signal);
+    loop.on("signal", start);
 
     loop.on("exception", [=] (const oyoung::any& argument) {
         auto what = oyoung::any_cast<std::string>(argument);
@@ -29,11 +29,16 @@ int main(int argc, char *argv[]) /*try*/ {
 
     loop.emit("start", nlohmann::json{ {"name", "SB"} });
 
-    std::signal(SIGTERM, [](int sig)->void {
+    auto signal_handle = [](int sig)->void {
         auto loop = dynamic_cast<default_event_loop *>(oyoung::base_ev_loop::global);
         loop->emit("signal", nlohmann::json {{"signal", sig}});
         loop->break_loop();
-    });
+    };
+
+    std::signal(SIGTERM, signal_handle);
+    std::signal(SIGINT,signal_handle);
+    std::signal(SIGKILL,signal_handle);
+
 
 
     return loop.exec();
