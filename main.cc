@@ -16,9 +16,16 @@ int main(int argc, char *argv[]) /*try*/ {
     server.set_read_event(ev::READ);
 
 
-    loop.on("accept", [=](const oyoung::any& argument) {
+    loop.on("accept", [&](const oyoung::any& argument) {
         auto client = oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument);
-        if(client) std::cout << client->address() << ": " << client->port() << " connected" << std::endl;
+        if(client) {
+            std::cout << client->address() << ": " << client->port() << " connected" << std::endl;
+            if(server.count() > 1) {
+                std::cout << "before close, client is good? " << client->good() << std::endl;
+                client->close();
+                std::cout << "after close, client is good? " << client->good() << std::endl;
+            }
+        }
     });
 
     loop.on("data", [](const oyoung::any& argument) {
@@ -34,7 +41,7 @@ int main(int argc, char *argv[]) /*try*/ {
     });
 
     loop.on("close", [](const oyoung::any& argument) {
-       std::cout << oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument)->descriptor() << " closed" << std::endl;
+       std::cout << oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument)->port() << " closed" << std::endl;
     });
 
     server.start();

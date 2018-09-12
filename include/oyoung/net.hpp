@@ -92,6 +92,8 @@ public:
         _descriptor = descriptor;
     }
 
+    virtual bool good() const noexcept = 0;
+
 protected:
 
     const std::string _address;
@@ -258,9 +260,18 @@ namespace tcp {
             }
         }
 
+        bool good() const noexcept override
+        {
+            return _ctrl.good(_descriptor);
+        }
+
         void close() {
             if(_descriptor == bad_descriptor) return;
             _ctrl.close(_descriptor);
+            _descriptor = bad_descriptor;
+        }
+
+        void reset() {
             _descriptor = bad_descriptor;
         }
 
@@ -367,6 +378,11 @@ namespace tcp {
             }
 
             return nullptr;
+        }
+
+        bool good() const noexcept override
+        {
+            return _ctrl.good(_descriptor);
         }
 
         void close()
@@ -529,6 +545,13 @@ namespace tcp {
             }
         }
 
+        bool good(int fd) const noexcept
+        {
+            struct sockaddr_in sin;
+            socklen_t len = sizeof(sin);
+            return ::getsockname(fd, (struct sockaddr *)&sin, &len) == 0;
+        }
+
         //return client socket fd
         Int32 accept(Int32 onsocketfd, String& remoteip, Int32& remoteport, Int32 milliseconds) const {
             socklen_t clilen;
@@ -572,13 +595,7 @@ namespace tcp {
             }
         }
 
-        bool is_connected(int socket) const
-        {
-            char buffer[1];
-            auto n = ::recv(socket, buffer, sizeof(buffer), MSG_PEEK);
 
-            return n > 0;
-        }
     };
 
 
@@ -609,6 +626,8 @@ namespace tcp {
                 if(fd == descriptor()) {
                     auto client = accept(10);
                     if(client) {
+                        loop.start(client->descriptor(), _read_event);
+                        _accepted_clients[client->descriptor()] = client;
                         loop.emit ("accept", client);
                     }
                 } else {
@@ -620,6 +639,7 @@ namespace tcp {
                             auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
                             loop.emit ("data",  bytes);
                         } else if(result.error() == socket_error::connection_closed) {
+                            client->set_descriptor(fd);
                             loop.emit ("close", client);
                         } else {
                             loop.emit ("error", result.message());
@@ -629,13 +649,6 @@ namespace tcp {
 
             });
 
-            loop.on("accept", [=](const any& argument) {
-                auto client = any_cast<std::shared_ptr<default_client>>(argument);
-                if(client) {
-                    loop.start(client->descriptor(), _read_event);
-                    _accepted_clients[client->descriptor()] = client;
-                }
-            });
 
             loop.on("close", [=](const any& argument){
                 auto client = any_cast<std::shared_ptr<default_client>>(argument);
@@ -648,6 +661,19 @@ namespace tcp {
 
             if(listen().success()) {
                 loop.start(descriptor(), _read_event);
+            }
+        }
+
+        void close_client(std::shared_ptr<default_client> client)
+        {
+            if(client) {
+                auto descriptor = client->descriptor();
+
+                loop.stop(descriptor);
+                _accepted_clients.erase(descriptor);
+
+                loop.emit ("close", client);
+                client->close();
             }
         }
 
