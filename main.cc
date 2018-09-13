@@ -30,10 +30,13 @@ int main(int argc, char *argv[]) /*try*/ {
 
     loop.on("data", [](const oyoung::any& argument) {
         std::cerr << "on data" << std::endl;
-
-        auto bytes = oyoung::any_cast<std::shared_ptr<oyoung::net::Bytes>>(argument);
-        if(bytes) {
+	using data_tuple = std::tuple<std::shared_ptr<oyoung::net::tcp::default_client>, std::shared_ptr<oyoung::net::Bytes>>;
+        auto tuple = oyoung::any_cast<data_tuple>(argument);
+        auto client = std::get<0>(tuple);
+        auto bytes = std::get<1>(tuple);
+	if(bytes) {
             std::cout << oyoung::net::String(bytes->begin(), bytes->end()) << std::flush;
+            client->send(*bytes);
         } else {
             std::cout << "no data" << std::endl;
         }

@@ -637,7 +637,7 @@ namespace tcp {
                         auto result = client->read(length);
                         if(result.success()) {
                             auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
-                            loop.emit ("data",  bytes);
+                            loop.emit ("data",  std::make_tuple(client, bytes));
                         } else if(result.error() == socket_error::connection_closed) {
                             client->set_descriptor(fd);
                             loop.emit ("close", client);
