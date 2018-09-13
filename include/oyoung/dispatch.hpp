@@ -300,7 +300,7 @@ struct base_ev_loop
     }
 
     virtual void on(const std::string& name, const std::function<void(const any&)>& listener) = 0;
-    virtual void emit(const std::string& name, const any& argument) = 0;
+    virtual void emit(const std::string& name, const any& argument = {}) = 0;
     virtual int exec() { return 0; }
     virtual ~base_ev_loop() {}
 };
@@ -337,7 +337,7 @@ struct event_loop: public base_ev_loop
       return ev_code;
   }
 
-  void emit(const std::string& name, const any& argument) override
+  void emit(const std::string& name, const any& argument = {}) override
   {
       auto ev_item = std::make_tuple(name, argument);
       std::unique_lock<std::mutex> lock(queue_lock);

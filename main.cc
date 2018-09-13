@@ -3,6 +3,7 @@
 
 #include <oyoung/net.hpp>
 #include <oyoung/dispatch.hpp>
+#include <nlohmann/json.hpp>
 #include <ev++.h>
 
 using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
@@ -55,6 +56,8 @@ int main(int argc, char *argv[]) /*try*/ {
         std::cout << "loop is running, client count: " << server.count() << std::endl;
     }, std::chrono::seconds(1));
 
+
+    loop.emit("some", nlohmann::json { {"name", "SB"}});
 
     return loop.exec();
 
