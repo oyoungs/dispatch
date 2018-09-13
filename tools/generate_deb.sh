@@ -49,7 +49,6 @@ touch preinst
 chmod 775 preinst
 (cat << EOF
 #!/bin/bash
-rm -rf ${target_install_prefix}
 EOF
 ) > preinst
 
