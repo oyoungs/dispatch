@@ -25,6 +25,7 @@
 #include <thread>
 #include <mutex>
 #include <cstddef>
+#include <future>
 #include <functional>
 #include <future>
 #include <memory>
@@ -103,6 +104,22 @@ void async(Q& queue, Fn&& func, Args&& ...args)
    queue.dispatch(func, std::forward<Args>(args)...);
 }
 
+template<typename Q, typename Fn, typename ...Args>
+void sync(Q& queue, Fn&& func, Args&& ...args)
+{
+    auto task = std::make_shared<std::packaged_task<void()>> (std::move(func), std::forward<Args>(args)...);
+    auto future = task->get_future();
+    queue.dispatch([=] {
+        if(task) {
+           (*task) ();
+        }
+    });
+
+    future.wait();
+}
+
+
+
 
 
 
@@ -116,6 +133,7 @@ struct base_dispatch_queue
         other.name.clear();
         other.running = false;
     }
+    virtual ~base_dispatch_queue() {}
 };
 
 template<std::size_t N>
@@ -196,6 +214,11 @@ template<std::size_t N>
 std::shared_ptr<dispatch_queue<N>> dispatch_queue_create(const std::string& name)
 {
     return std::make_shared< dispatch_queue<N> >(name);
+}
+
+std::shared_ptr<concurrent_dispatch_queue> dispatch_queue_create(const std::string& name)
+{
+    return std::make_shared< concurrent_dispatch_queue>(name);
 }
 
 concurrent_dispatch_queue& get_global_queue()

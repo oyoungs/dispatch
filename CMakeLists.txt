@@ -7,15 +7,16 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-set(DISPATCH_SRC main.cc)
 
-add_executable(dispatch ${DISPATCH_SRC})
-target_link_libraries(dispatch pthread ev)
+add_executable(tcp tcp_main.cc)
 
-set(ANY_SRC any_main.cc)
-add_executable(any ${ANY_SRC})
-target_link_libraries(any pthread ev)
+add_executable(any any_main.cc)
 
+add_executable(dispatch dispatch_main.cc)
+
+
+target_link_libraries(tcp pthread ev)
+target_link_libraries(dispatch pthread)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
