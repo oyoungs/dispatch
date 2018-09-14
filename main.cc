@@ -31,11 +31,11 @@ int main(int argc, char *argv[]) /*try*/ {
 
     loop.on("data", [](const oyoung::any& argument) {
         std::cerr << "on data" << std::endl;
-	using data_tuple = std::tuple<std::shared_ptr<oyoung::net::tcp::default_client>, std::shared_ptr<oyoung::net::Bytes>>;
+        using data_tuple = std::tuple<std::shared_ptr<oyoung::net::tcp::default_client>, std::shared_ptr<oyoung::net::Bytes>>;
         auto tuple = oyoung::any_cast<data_tuple>(argument);
         auto client = std::get<0>(tuple);
         auto bytes = std::get<1>(tuple);
-	if(bytes) {
+        if(bytes) {
             std::cout << oyoung::net::String(bytes->begin(), bytes->end()) << std::flush;
             client->send(*bytes);
         } else {
@@ -48,16 +48,22 @@ int main(int argc, char *argv[]) /*try*/ {
        std::cout << oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument)->port() << " closed" << std::endl;
     });
 
-    server.start();
-
+    loop.on("start", [&](const oyoung::any& argument) {
+        server.start();
+        std::cout << "server started" << std::endl;
+    });
 
 
     loop.set_interval([&] {
         std::cout << "loop is running, client count: " << server.count() << std::endl;
     }, std::chrono::seconds(1));
 
+    loop.emit("start");
 
-    loop.emit("some", nlohmann::json { {"name", "SB"}});
+    oyoung::async(oyoung::get_global_queue(), [=](int) {
+        std::cout << "sync task" << std::endl;
+    }, 0);
+
 
     return loop.exec();
 

@@ -94,15 +94,16 @@
 namespace oyoung {
 
 
-
 template<std::size_t N>
 struct dispatch_queue;
 
 template<typename Q, typename Fn, typename ...Args>
-void dispatch(Q& queue, Fn&& func, Args&& ...args)
+void async(Q& queue, Fn&& func, Args&& ...args)
 {
    queue.dispatch(func, std::forward<Args>(args)...);
 }
+
+
 
 
 struct base_dispatch_queue
@@ -110,6 +111,11 @@ struct base_dispatch_queue
     bool running;
     std::string name;
     base_dispatch_queue(const std::string& name): name (name), running(false) {}
+    base_dispatch_queue(base_dispatch_queue&& other)
+        : name(other.name), running(other.running) {
+        other.name.clear();
+        other.running = false;
+    }
 };
 
 template<std::size_t N>
@@ -127,7 +133,7 @@ struct dispatch_queue: public base_dispatch_queue
     template<typename Fn, typename ...Args>
     void dispatch(Fn && func, Args&& ...args) {
         std::unique_lock<std::mutex> lock(_queue_mutex);
-        _task_queue.push(std::bind(func, std::forward<Args>(args)...));
+        _task_queue.push(std::bind(std::move(func), std::forward<Args>(args)...));
         _queue_cv_runnable.notify_all();
     }
 
@@ -185,6 +191,12 @@ private:
 using serial_dispatch_queue = dispatch_queue<1ul>;
 
 using concurrent_dispatch_queue = dispatch_queue<4ul>;
+
+template<std::size_t N>
+std::shared_ptr<dispatch_queue<N>> dispatch_queue_create(const std::string& name)
+{
+    return std::make_shared< dispatch_queue<N> >(name);
+}
 
 concurrent_dispatch_queue& get_global_queue()
 {
@@ -377,7 +389,7 @@ struct event_loop: public base_ev_loop
   template <typename Rep, typename Period>
   uint64_t set_timeout(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& delay)
   {
-      auto timer = std::make_shared<ev_timer_t >(ev_loop);
+      auto timer = std::make_shared<ev_timer_t >(*ev_loop);
       timer->set(this);
       timer->start(std::chrono::duration_cast<std::chrono::milliseconds>(delay).count() / 1000.0, 0);
       timers.emplace_back(std::make_tuple(timer, func));
@@ -435,13 +447,11 @@ private:
 
           auto ev_data = std::get<1>(ev_item);
 
-          if(ev_data) {
-              for(auto func: listeners[name]) {
-                  try {
-                    func(ev_data);
-                  } catch(const std::exception& e) {
-                      emit("exception", e.what());
-                  }
+          for(auto func: listeners[name]) {
+              try {
+                func(ev_data);
+              } catch(const std::exception& e) {
+                  emit("exception", e.what());
               }
           }
       }

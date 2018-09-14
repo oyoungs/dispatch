@@ -7,10 +7,15 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-aux_source_directory(. SRC_LIST)
+set(DISPATCH_SRC main.cc)
 
-add_executable(${PROJECT_NAME} ${SRC_LIST})
-target_link_libraries(${PROJECT_NAME} pthread ev)
+add_executable(dispatch ${DISPATCH_SRC})
+target_link_libraries(dispatch pthread ev)
+
+set(ANY_SRC any_main.cc)
+add_executable(any ${ANY_SRC})
+target_link_libraries(any pthread ev)
+
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
