@@ -95,429 +95,478 @@
 namespace oyoung {
 
 
-template<std::size_t N>
-struct dispatch_queue;
+    template<std::size_t N>
+    struct dispatch_queue;
 
-template<typename Q, typename Fn, typename ...Args>
-void async(Q& queue, Fn&& func, Args&& ...args)
-{
-   queue.dispatch(func, std::forward<Args>(args)...);
-}
-
-template<typename Q, typename Fn, typename ...Args>
-void sync(Q& queue, Fn&& func, Args&& ...args)
-{
-    auto task = std::make_shared<std::packaged_task<void()>> (std::move(func), std::forward<Args>(args)...);
-    auto future = task->get_future();
-    queue.dispatch([=] {
-        if(task) {
-           (*task) ();
-        }
-    });
-
-    future.wait();
-}
-
-
-
-
-
-
-struct base_dispatch_queue
-{
-    bool running;
-    std::string name;
-    base_dispatch_queue(const std::string& name): name (name), running(false) {}
-    base_dispatch_queue(base_dispatch_queue&& other)
-        : name(other.name), running(other.running) {
-        other.name.clear();
-        other.running = false;
+    template<typename Q, typename Fn, typename ...Args>
+    void async(Q &queue, Fn &&func, Args &&...args) {
+        queue.dispatch(func, std::forward<Args>(args)...);
     }
-    virtual ~base_dispatch_queue() {}
-};
 
-template<std::size_t N>
-struct dispatch_queue: public base_dispatch_queue
-{
-    dispatch_queue(const std::string& name): base_dispatch_queue(name) {
-        running = true;
-        for(auto i = 0ul; i < N; ++i) {
-            _internal_thread[i] = std::thread([=] {
-                dispatch_on_new_thread();
+    template<typename Q, typename Fn, typename ...Args>
+    void sync(Q &queue, Fn &&func, Args &&...args) {
+        auto task = std::make_shared<std::packaged_task<void()>>(std::move(func), std::forward<Args>(args)...);
+        auto future = task->get_future();
+        queue.dispatch([=] {
+            if (task) {
+                (*task)();
+            }
+        });
+
+        future.wait();
+    }
+
+
+    struct base_dispatch_queue {
+        bool running;
+        std::string name;
+
+        base_dispatch_queue(const std::string &name) : name(name), running(false) {}
+
+        base_dispatch_queue(base_dispatch_queue &&other)
+                : name(other.name), running(other.running) {
+            other.name.clear();
+            other.running = false;
+        }
+
+        virtual ~base_dispatch_queue() {}
+    };
+
+    template<std::size_t N>
+    struct dispatch_queue : public base_dispatch_queue {
+        dispatch_queue(const std::string &name) : base_dispatch_queue(name) {
+            running = true;
+            for (auto i = 0ul; i < N; ++i) {
+                _internal_thread[i] = std::thread([=] {
+                    dispatch_on_new_thread();
+                });
+            }
+        }
+
+        template<typename Fn, typename ...Args>
+        void dispatch(Fn &&func, Args &&...args) {
+            std::unique_lock<std::mutex> lock(_queue_mutex);
+            _task_queue.push(std::bind(std::move(func), std::forward<Args>(args)...));
+            _queue_cv_runnable.notify_all();
+        }
+
+        ~dispatch_queue() {
+            running = false;
+            _queue_cv_runnable.notify_all();
+            for (auto &thread: _internal_thread) {
+                if (thread.joinable()) {
+                    thread.join();
+                }
+            }
+        }
+
+        void wait() {
+            std::unique_lock<std::mutex> lock(_queue_mutex);
+            _queue_cv_empty.wait(lock, [=] { return _task_queue.empty(); });
+        }
+
+    private:
+        void dispatch_on_new_thread() {
+            while (running) {
+                std::function<void()> func;
+                {
+                    std::unique_lock<std::mutex> lock(_queue_mutex);
+                    _queue_cv_runnable.wait(lock, [=] { return !_task_queue.empty() || !running; });
+                    if (running) {
+                        func = _task_queue.front();
+                        _task_queue.pop();
+
+                    }
+                }
+
+                if (func) {
+                    func();
+                }
+
+
+                {
+                    std::unique_lock<std::mutex> lock(_queue_mutex);
+                    if (_task_queue.empty()) {
+                        _queue_cv_empty.notify_all();
+                    }
+                }
+            }
+        }
+
+    private:
+        std::mutex _queue_mutex;
+        std::condition_variable _queue_cv_runnable;
+        std::condition_variable _queue_cv_empty;
+        std::thread _internal_thread[N];
+        std::queue<std::function<void()>> _task_queue;
+    };
+
+    struct dispatch_main_queue_base {
+        template<typename Fn, typename ...Args>
+        void dispatch(Fn &&func, Args &&...args) {
+            std::function<void()> function = std::bind(std::move(func), std::forward<Args>(args)...);
+            emit("dispatch_main_queue", function);
+        };
+
+        static void set_dispatch_main_queue(std::shared_ptr<dispatch_main_queue_base> queue) {
+            mainQ = queue;
+        }
+
+        static std::shared_ptr<dispatch_main_queue_base> dispatch_main_queue()
+        {
+            return mainQ;
+        }
+
+    protected:
+        template<typename L>
+        dispatch_main_queue_base(L &loop) {
+            loop.on("dispatch_main_queue", [=](const any &argument) {
+                handle_dispatch_main_queue(argument);
             });
         }
-    }
 
-    template<typename Fn, typename ...Args>
-    void dispatch(Fn && func, Args&& ...args) {
-        std::unique_lock<std::mutex> lock(_queue_mutex);
-        _task_queue.push(std::bind(std::move(func), std::forward<Args>(args)...));
-        _queue_cv_runnable.notify_all();
-    }
+        virtual void emit(const std::string &name, const any &argument) {}
 
-    ~dispatch_queue() {
-        running = false;
-        _queue_cv_runnable.notify_all();
-        for(auto& thread: _internal_thread) {
-            if(thread.joinable()) {
-                thread.join();
+        virtual ~dispatch_main_queue_base() {}
+
+    private:
+
+        static std::shared_ptr<dispatch_main_queue_base> mainQ;
+
+        void handle_dispatch_main_queue(const any &argument) {
+            try {
+                auto function = any_cast<std::function<void()>>(argument);
+                if (function) function();
+            } catch (const std::exception& e) {
+                emit("exception", e.what());
             }
         }
-    }
-
-    void wait() {
-        std::unique_lock<std::mutex> lock(_queue_mutex);
-        _queue_cv_empty.wait(lock, [=] { return _task_queue.empty();});
-    }
-
-private:
-    void dispatch_on_new_thread() {
-        while(running) {
-            std::function<void()> func;
-            {
-                std::unique_lock<std::mutex> lock(_queue_mutex);
-                _queue_cv_runnable.wait(lock, [=] { return !_task_queue.empty() || !running;});
-                if(running) {
-                    func = _task_queue.front();
-                    _task_queue.pop();
-
-                }
-            }
-
-            if(func) {
-                func();
-            }
-
-
-            {
-                std::unique_lock<std::mutex> lock(_queue_mutex);
-                if(_task_queue.empty()) {
-                    _queue_cv_empty.notify_all();
-                }
-            }
-        }
-    }
-
-private:
-    std::mutex  _queue_mutex;
-    std::condition_variable _queue_cv_runnable;
-    std::condition_variable _queue_cv_empty;
-    std::thread _internal_thread[N];
-    std::queue<std::function<void()>> _task_queue;
-};
-
-using serial_dispatch_queue = dispatch_queue<1ul>;
-
-using concurrent_dispatch_queue = dispatch_queue<4ul>;
-
-template<std::size_t N>
-std::shared_ptr<dispatch_queue<N>> dispatch_queue_create(const std::string& name)
-{
-    return std::make_shared< dispatch_queue<N> >(name);
-}
-
-std::shared_ptr<concurrent_dispatch_queue> dispatch_queue_create(const std::string& name)
-{
-    return std::make_shared< concurrent_dispatch_queue>(name);
-}
-
-concurrent_dispatch_queue& get_global_queue()
-{
-    static concurrent_dispatch_queue global_queue("global");
-    return global_queue;
-}
-
-
-template<typename T>
-using promise_block = std::function<T()>;
-
-template<typename T, typename U>
-using promise_block_p = std::function<T(U)>;
-
-
-template<typename T>
-struct base_promise
-{
-
-    enum promise_status {
-        ready, timeout, defered
     };
-    base_promise(const promise_block<T>& block)
-        : _queue(std::make_shared<serial_dispatch_queue>("promise")) {
-        auto p = std::make_shared<std::promise<T> >();
-        _future = p->get_future();
-        _queue->dispatch( [=](const promise_block<T>& block) {
-            try {
-                T result = block();
-                p->set_value(result);
-            } catch(...) {
-                try {
-                    p->set_exception(std::current_exception());
-                } catch(...) {}
-            }
-        }, block);
-    }
 
-    template<typename LastType>
-    base_promise(base_promise<LastType>& from, const promise_block_p<T, LastType>& block)
-        : _queue(from._queue) {
+    std::shared_ptr<dispatch_main_queue_base> dispatch_main_queue_base::mainQ;
 
-        auto last_future = std::make_shared<std::future<LastType>>(std::move(from._future));
-        auto next_promise = std::make_shared<std::promise<T> >( );
-        _future = next_promise->get_future();
-        _queue->dispatch([=](const promise_block_p<T, LastType>& block) {
-            try {
-                LastType last = last_future->get();
-                T next = block(last);
-                next_promise->set_value(next);
-            } catch(...) {
-                try {
-                    next_promise->set_exception(std::current_exception());
-                } catch(...) {}
-            }
-        }, block);
-    }
+    template<typename L>
+    struct dispatch_main_queue : public dispatch_main_queue_base {
+        dispatch_main_queue(L &loop)
+                : dispatch_main_queue_base(loop), loop(loop) {}
 
-    base_promise(base_promise&& other)
-        : _queue(other._queue), _future(std::move(other._future)) {
-        other._queue.reset();
-    }
+        void emit(const std::string &name, const any &argument) override {
+            loop.emit(name, argument);
+        }
 
-    T get() {
-        return _future.get();
-    }
+        ~dispatch_main_queue() {}
 
-    void wait() {
-        _future.wait();
-    }
+    private:
+        L &loop;
+    };
 
-    template<typename Rep, typename Period>
-    promise_status wait_for(const std::chrono::duration<Rep, Period>& duration) const {
-        return (promise_status) _future.wait_for(duration);
-    }
+    dispatch_main_queue_base &dispatch_get_main_queue() {
+        auto queue = dispatch_main_queue_base::dispatch_main_queue();
 
-    template<typename Clock, typename Duration>
-    promise_status wait_until(const std::chrono::time_point<Clock, Duration>& tp) {
-       return (promise_status) _future.wait_until(tp);
-    }
+        if (queue) {
 
-    template<typename NextType>
-    base_promise<NextType> then(const promise_block_p<NextType, T>& block) {
-        return base_promise<NextType>(*this, block);
+            return *queue;
+        }
+
+        throw std::runtime_error("dispatch main queue not set");
     }
 
 
+    using serial_dispatch_queue = dispatch_queue<1ul>;
 
+    using concurrent_dispatch_queue = dispatch_queue<4ul>;
 
-    std::shared_ptr<serial_dispatch_queue> _queue;
-    std::future<T> _future;
-
-};
-
-
-template<typename T>
-base_promise<T> promise(const promise_block<T>& block) {
-    return base_promise<T>(block);
-}
-
-struct base_ev_loop
-{
-    thread_local static base_ev_loop *global;
-
-    base_ev_loop() {
-        global = this;
+    template<std::size_t N>
+    std::shared_ptr<dispatch_queue<N>> dispatch_queue_create(const std::string &name) {
+        return std::make_shared<dispatch_queue<N> >(name);
     }
+
+    std::shared_ptr<concurrent_dispatch_queue> dispatch_queue_create(const std::string &name) {
+        return std::make_shared<concurrent_dispatch_queue>(name);
+    }
+
+    concurrent_dispatch_queue &get_global_queue() {
+        static concurrent_dispatch_queue global_queue("global");
+        return global_queue;
+    }
+
 
     template<typename T>
-    void emit(const std::string& name, const T & data = T{})
-    {
-        emit(name, any(data));
+    using promise_block = std::function<T()>;
+
+    template<typename T, typename U>
+    using promise_block_p = std::function<T(U)>;
+
+
+    template<typename T>
+    struct base_promise {
+
+        enum promise_status {
+            ready, timeout, defered
+        };
+
+        base_promise(const promise_block<T> &block)
+                : _queue(std::make_shared<serial_dispatch_queue>("promise")) {
+            auto p = std::make_shared<std::promise<T> >();
+            _future = p->get_future();
+            _queue->dispatch([=](const promise_block<T> &block) {
+                try {
+                    T result = block();
+                    p->set_value(result);
+                } catch (...) {
+                    try {
+                        p->set_exception(std::current_exception());
+                    } catch (...) {}
+                }
+            }, block);
+        }
+
+        template<typename LastType>
+        base_promise(base_promise<LastType> &from, const promise_block_p<T, LastType> &block)
+                : _queue(from._queue) {
+
+            auto last_future = std::make_shared<std::future<LastType>>(std::move(from._future));
+            auto next_promise = std::make_shared<std::promise<T> >();
+            _future = next_promise->get_future();
+            _queue->dispatch([=](const promise_block_p<T, LastType> &block) {
+                try {
+                    LastType last = last_future->get();
+                    T next = block(last);
+                    next_promise->set_value(next);
+                } catch (...) {
+                    try {
+                        next_promise->set_exception(std::current_exception());
+                    } catch (...) {}
+                }
+            }, block);
+        }
+
+        base_promise(base_promise &&other)
+                : _queue(other._queue), _future(std::move(other._future)) {
+            other._queue.reset();
+        }
+
+        T get() {
+            return _future.get();
+        }
+
+        void wait() {
+            _future.wait();
+        }
+
+        template<typename Rep, typename Period>
+        promise_status wait_for(const std::chrono::duration<Rep, Period> &duration) const {
+            return (promise_status) _future.wait_for(duration);
+        }
+
+        template<typename Clock, typename Duration>
+        promise_status wait_until(const std::chrono::time_point<Clock, Duration> &tp) {
+            return (promise_status) _future.wait_until(tp);
+        }
+
+        template<typename NextType>
+        base_promise<NextType> then(const promise_block_p<NextType, T> &block) {
+            return base_promise<NextType>(*this, block);
+        }
+
+
+        std::shared_ptr<serial_dispatch_queue> _queue;
+        std::future<T> _future;
+
+    };
+
+
+    template<typename T>
+    base_promise<T> promise(const promise_block<T> &block) {
+        return base_promise<T>(block);
     }
 
-    virtual void on(const std::string& name, const std::function<void(const any&)>& listener) = 0;
-    virtual void emit(const std::string& name, const any& argument = {}) = 0;
-    virtual int exec() { return 0; }
-    virtual ~base_ev_loop() {}
-};
+    struct base_ev_loop {
+        thread_local static base_ev_loop *global;
 
-thread_local base_ev_loop* base_ev_loop::global = nullptr;
-   
+        base_ev_loop() {
+            global = this;
+        }
 
+        template<typename T>
+        void emit(const std::string &name, const T &data = T{}) {
+            emit(name, any(data));
+        }
 
-template <typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER>
-struct event_loop: public base_ev_loop
-{
-  using ev_loop_t = EV_LOOP;
-  using ev_io_t = EV_IO;
-  using ev_async_t = EV_ASYNC;
-  using ev_timer_t = EV_TIMER;
+        virtual void on(const std::string &name, const std::function<void(const any &)> &listener) = 0;
 
-  event_loop(const event_loop&) = delete;
+        virtual void emit(const std::string &name, const any &argument = {}) = 0;
 
-  event_loop()
-      : ev_code(0)
-      , ev_loop(std::make_shared<ev_loop_t>())
-      , ev_async(std::make_shared<ev_async_t>(*ev_loop))
-  {
-      ev_async->set(this);
-      ev_async->start();
-  }
+        virtual int exec() { return 0; }
 
-  event_loop&operator=(const event_loop&) = delete;
+        virtual ~base_ev_loop() {}
+    };
+
+    thread_local base_ev_loop *base_ev_loop::global = nullptr;
 
 
-  int exec() override
-  {
-      ev_loop->run(0);
-      return ev_code;
-  }
+    template<typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER>
+    struct event_loop : public base_ev_loop {
+        using ev_loop_t = EV_LOOP;
+        using ev_io_t = EV_IO;
+        using ev_async_t = EV_ASYNC;
+        using ev_timer_t = EV_TIMER;
 
-  void emit(const std::string& name, const any& argument = {}) override
-  {
-      auto ev_item = std::make_tuple(name, argument);
-      std::unique_lock<std::mutex> lock(queue_lock);
-      queue.push(ev_item);
-      ev_async->send();
-  }
+        event_loop(const event_loop &) = delete;
 
-  void on(const std::string &name, const std::function<void (const any&)> &listener) override
-  {
-     listeners[name].emplace_back(listener);
-  }
+        event_loop(event_loop &&other)
+                : ev_code(other.ev_code), ev_loop(std::move(other.ev_loop)), ev_async(std::move(other.ev_async)) {
 
-  void start(int descriptor, int event)
-  {
-      auto ev_io = std::make_shared<ev_io_t>(*ev_loop);
-      ev_io->set(this);
-      ev_io->start(descriptor, event);
-      ev_ios[descriptor] = ev_io;
-  }
+        }
 
-  void stop(int descriptor)
-  {
-      if(auto ev_io = ev_ios[descriptor]) {
-          ev_io->stop();
-      }
+        event_loop()
+                : ev_code(0), ev_loop(std::make_shared<ev_loop_t>()), ev_async(std::make_shared<ev_async_t>(*ev_loop)) {
+            ev_async->set(this);
+            ev_async->start();
+        }
 
-      ev_ios.erase(descriptor);
-  }
-
-  void break_loop()
-  {
-      if(ev_loop) {
-          ev_loop->break_loop();
-      }
-  }
-
-  template <typename Rep, typename Period>
-  uint64_t set_timeout(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& delay)
-  {
-      auto timer = std::make_shared<ev_timer_t >(*ev_loop);
-      timer->set(this);
-      timer->start(std::chrono::duration_cast<std::chrono::milliseconds>(delay).count() / 1000.0, 0);
-      timers.emplace_back(std::make_tuple(timer, func));
-
-      return reinterpret_cast<uint64_t >(timer.get());
-  }
-
-  void clear_timer(uint64_t id)
-  {
-      auto timer = reinterpret_cast<ev_timer_t *>(id);
-      for (int i = 0, size = timers.size(); i < size; ++i) {
-          auto ev_timer = std::get<0>(timers[i]);
-          if(ev_timer.get() == timer) {
-              ev_timer->stop();
-              break;
-          }
-      }
-  }
-
-  template <typename Rep, typename Period>
-  uint64_t set_interval(const std::function<void()>& func, const std::chrono::duration<Rep, Period>& repeat)
-  {
-      auto timer = std::make_shared<ev_timer_t >(*ev_loop);
-      timer->set(this);
-      timer->start(0, std::chrono::duration_cast<std::chrono::milliseconds>(repeat).count() / 1000.0);
-      timers.emplace_back(std::make_tuple(timer, func));
-      return reinterpret_cast<uint64_t >(timer.get());
-  }
+        event_loop &operator=(const event_loop &) = delete;
 
 
-  ~event_loop() override {}
+        int exec() override {
+            ev_loop->run(0);
+            return ev_code;
+        }
 
-private:
+        void emit(const std::string &name, const any &argument = {}) override {
+            auto ev_item = std::make_tuple(name, argument);
+            std::unique_lock<std::mutex> lock(queue_lock);
+            queue.push(ev_item);
+            ev_async->send();
+        }
 
-  void operator()(ev_io_t & io, int event)
-  {
-      emit("io",  std::make_tuple(io.fd, event));
-  }
+        void on(const std::string &name, const std::function<void(const any &)> &listener) override {
+            listeners[name].emplace_back(listener);
+        }
 
-  void operator()(ev_async_t & async, int event)
-  {
-      while(not queue.empty()) {
-          std::tuple<std::string, any> ev_item;
-          {
-              std::unique_lock<std::mutex> lock(queue_lock);
-              if(!queue.empty()) {
-                  ev_item = queue.front();
-                  queue.pop();
-              }
-          }
+        void start(int descriptor, int event) {
+            auto ev_io = std::make_shared<ev_io_t>(*ev_loop);
+            ev_io->set(this);
+            ev_io->start(descriptor, event);
+            ev_ios[descriptor] = ev_io;
+        }
 
-          auto name = std::get<0>(ev_item);
+        void stop(int descriptor) {
+            if (auto ev_io = ev_ios[descriptor]) {
+                ev_io->stop();
+            }
 
-          if(name.empty()) return;
+            ev_ios.erase(descriptor);
+        }
 
-          auto ev_data = std::get<1>(ev_item);
+        void break_loop() {
+            if (ev_loop) {
+                ev_loop->break_loop();
+            }
+        }
 
-          for(auto func: listeners[name]) {
-              try {
-                func(ev_data);
-              } catch(const std::exception& e) {
-                  emit("exception", e.what());
-              }
-          }
-      }
-  }
+        template<typename Rep, typename Period>
+        uint64_t set_timeout(const std::function<void()> &func, const std::chrono::duration<Rep, Period> &delay) {
+            auto timer = std::make_shared<ev_timer_t>(*ev_loop);
+            timer->set(this);
+            timer->start(std::chrono::duration_cast<std::chrono::milliseconds>(delay).count() / 1000.0, 0);
+            timers.emplace_back(std::make_tuple(timer, func));
 
-  void operator()(ev_timer_t & ev_timer, int event) {
-      int select_timer_index = 0;
-      for(auto i = 0ul, size = timers.size(); i < size; ++i) {
-          auto  tuple = timers[i];
-          auto  timer = std::get<0>(tuple);
-          if(timer && &ev_timer == timer.get()) {
-              auto func = std::get<1>(tuple);
-              if(func) {
-                  func();
-              }
+            return reinterpret_cast<uint64_t >(timer.get());
+        }
 
-              select_timer_index = i;
-              break;
-          }
-      }
+        void clear_timer(uint64_t id) {
+            auto timer = reinterpret_cast<ev_timer_t *>(id);
+            for (int i = 0, size = timers.size(); i < size; ++i) {
+                auto ev_timer = std::get<0>(timers[i]);
+                if (ev_timer.get() == timer) {
+                    ev_timer->stop();
+                    break;
+                }
+            }
+        }
 
-      if(! ev_timer.is_active()) {
-          timers.erase(timers.begin() + select_timer_index);
-      }
-  }
-
-
-
-
-private:
-
-  int           ev_code;
-  std::shared_ptr<ev_loop_t>                    ev_loop;
-  std::map<int, std::shared_ptr<ev_io_t>>       ev_ios;
-  std::shared_ptr<ev_async_t>                   ev_async;
-
-  std::vector<std::tuple<std::shared_ptr<ev_timer_t>, std::function<void()> > > timers;
+        template<typename Rep, typename Period>
+        uint64_t set_interval(const std::function<void()> &func, const std::chrono::duration<Rep, Period> &repeat) {
+            auto timer = std::make_shared<ev_timer_t>(*ev_loop);
+            timer->set(this);
+            timer->start(0, std::chrono::duration_cast<std::chrono::milliseconds>(repeat).count() / 1000.0);
+            timers.emplace_back(std::make_tuple(timer, func));
+            return reinterpret_cast<uint64_t >(timer.get());
+        }
 
 
-  std::mutex queue_lock;
-  std::queue<std::tuple<std::string, any> > queue;
-  std::map<std::string, std::vector<std::function<void(const any&)> > > listeners;
-};
+        ~event_loop() override {}
+
+    private:
+
+        void operator()(ev_io_t &io, int event) {
+            emit("io", std::make_tuple(io.fd, event));
+        }
+
+        void operator()(ev_async_t &async, int event) {
+            while (not queue.empty()) {
+                std::tuple<std::string, any> ev_item;
+                {
+                    std::unique_lock<std::mutex> lock(queue_lock);
+                    if (!queue.empty()) {
+                        ev_item = queue.front();
+                        queue.pop();
+                    }
+                }
+
+                auto name = std::get<0>(ev_item);
+
+                if (name.empty()) return;
+
+                auto ev_data = std::get<1>(ev_item);
+
+                for (auto func: listeners[name]) {
+                    try {
+                        func(ev_data);
+                    } catch (const std::exception &e) {
+                        emit("exception", e.what());
+                    }
+                }
+            }
+        }
+
+        void operator()(ev_timer_t &ev_timer, int event) {
+            int select_timer_index = 0;
+            for (auto i = 0ul, size = timers.size(); i < size; ++i) {
+                auto tuple = timers[i];
+                auto timer = std::get<0>(tuple);
+                if (timer && &ev_timer == timer.get()) {
+                    auto func = std::get<1>(tuple);
+                    if (func) {
+                        func();
+                    }
+
+                    select_timer_index = i;
+                    break;
+                }
+            }
+
+            if (!ev_timer.is_active()) {
+                timers.erase(timers.begin() + select_timer_index);
+            }
+        }
+
+
+    private:
+
+        int ev_code;
+        std::shared_ptr<ev_loop_t> ev_loop;
+        std::map<int, std::shared_ptr<ev_io_t>> ev_ios;
+        std::shared_ptr<ev_async_t> ev_async;
+
+        std::vector<std::tuple<std::shared_ptr<ev_timer_t>, std::function<void()> > > timers;
+
+
+        std::mutex queue_lock;
+        std::queue<std::tuple<std::string, any> > queue;
+        std::map<std::string, std::vector<std::function<void(const any &)> > > listeners;
+    };
 
 }
 

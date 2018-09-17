@@ -16,7 +16,7 @@ add_executable(dispatch dispatch_main.cc)
 
 
 target_link_libraries(tcp pthread ev)
-target_link_libraries(dispatch pthread)
+target_link_libraries(dispatch pthread ev)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
