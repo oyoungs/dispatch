@@ -92,6 +92,23 @@
     #define DISPATCH_HAS_CPP_14
 #endif
 
+namespace std {
+    namespace this_thread
+    {
+        static thread::id main_thread_id;
+
+        void set_main_thread()
+        {
+             main_thread_id = get_id();
+        }
+
+        bool is_main_thread()
+        {
+            return get_id() == main_thread_id;
+        }
+    }
+}
+
 namespace oyoung {
 
 
@@ -397,7 +414,10 @@ namespace oyoung {
 
         virtual void emit(const std::string &name, const any &argument = {}) = 0;
 
-        virtual int exec() { return 0; }
+        virtual int exec() {
+            std::this_thread::set_main_thread();
+            return 0;
+        }
 
         virtual ~base_ev_loop() {}
     };
@@ -429,6 +449,7 @@ namespace oyoung {
 
 
         int exec() override {
+            ev_code = base_ev_loop::exec();
             ev_loop->run(0);
             return ev_code;
         }

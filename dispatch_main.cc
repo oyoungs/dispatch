@@ -22,11 +22,21 @@ int main(int argc, char **argv)
         oyoung::sync(oyoung::dispatch_get_main_queue(), [=] {
 
             std::cout << "dispatch sync calling" << std::endl;
-            std::cout << "main thread: " << std::this_thread::get_id() << std::endl;
+            if(std::this_thread::is_main_thread()) {
+                std::cout << "dispatch thread(" << std::this_thread::get_id() <<") is  main thread" << std::endl;
+            } else {
+                std::cout << "dispatch thread(" << std::this_thread::get_id() <<") is not main thread" << std::endl;
+            }
         });
 
         std::cout << "dispatch sync called" << std::endl;
         std::cout << "dispatch main queue called" << std::endl;
+
+        if(std::this_thread::is_main_thread()) {
+            std::cout << "dispatch thread(" << std::this_thread::get_id() <<") is  main thread" << std::endl;
+        } else {
+            std::cout << "dispatch thread(" << std::this_thread::get_id() <<") is not main thread" << std::endl;
+        }
 
     });
 
@@ -34,11 +44,6 @@ int main(int argc, char **argv)
         auto what = oyoung::any_cast<std::string>(argument);
         std::cout << "exception: " << what << std::endl;
     });
-
-    loop.set_interval([=]{
-        std::cout << "tick" << std::endl;
-    }, std::chrono::seconds(1));
-
 
     return loop.exec();
 }
