@@ -240,9 +240,9 @@ namespace tcp {
 
         client(const std::string& address, Int32 port): socket(address, port) {}
 
-        result connect(int timeout = -1)
+        result connect(int timeout = 0)
         {
-            Int32 descriptor = _ctrl.connect(_address, _port, timeout);
+            Int32 descriptor = _ctrl.connect(_address.c_str(), _port, timeout);
             if(descriptor > 0) {
                 _descriptor = descriptor;
                 return result {};
@@ -277,29 +277,29 @@ namespace tcp {
 
         result send(const Bytes& data)
         {
-            if(_descriptor == bad_descriptor) return result(socket_error::connection_closed);
-
-            Int32 sendsize = _ctrl.send(_descriptor, data.data(), data.size());
-
-            return sendsize == data.size() ? result{} : result(socket_error::unknown_error);
+            return send(data.data(), data.size());
         }
 
         result send(const String& string)
         {
-            if(_descriptor == bad_descriptor) return result(socket_error::connection_closed);
-
-            Int32 sendsize = _ctrl.send(_descriptor, string.data(), string.size());
-
-            return sendsize == string.size() ? result{} : result(socket_error::unknown_error);
+            return send(string.data(), string.size());
         }
 
-        result send(const void *data, UInt32 size)
+        result send(const void *data, UInt32 length)
         {
-            if(_descriptor == bad_descriptor) return result(socket_error::connection_closed);
+            if(_descriptor == bad_descriptor) {
+                return result(socket_error::connection_closed, "connection closed");
+            }
 
-            Int32 sendsize = _ctrl.send(_descriptor, data, size);
-
-            return sendsize == size ? result{} : result(socket_error::unknown_error);
+            auto byteswrite = 0u;
+            while (byteswrite < length) {
+                auto writelen = _ctrl.send(_descriptor, (const char *)data + byteswrite, length - byteswrite);
+                if (writelen < 0) {
+                    return result(socket_error::unix_system_error, _ctrl.last_error_msg());
+                }
+                byteswrite += writelen;
+            }
+            return result {};
         }
 
 
@@ -508,15 +508,7 @@ namespace tcp {
         }
 
         Int32 send(int socketfd, const void *data, int len) const {
-            int byteswrite = 0;
-            while (byteswrite < len) {
-                int writelen = (int)::write(socketfd, (const char *)data + byteswrite, len - byteswrite);
-                if (writelen < 0) {
-                    return -1;
-                }
-                byteswrite += writelen;
-            }
-            return byteswrite;
+            return (int)::write(socketfd, data , len);
         }
 
         //return socket fd
@@ -593,6 +585,16 @@ namespace tcp {
             } else {
                 return ntohs(sin.sin_port);
             }
+        }
+
+        Int32  last_error() const
+        {
+            return errno;
+        }
+
+        String last_error_msg() const
+        {
+            return strerror(errno);
         }
 
 

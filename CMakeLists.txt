@@ -8,14 +8,16 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
-add_executable(tcp tcp_main.cc)
+add_executable(tcpserver tcp_server_main.cc)
+add_executable(tcpclient tcp_client_main.cc)
 
 add_executable(any any_main.cc)
 
 add_executable(dispatch dispatch_main.cc)
 
 
-target_link_libraries(tcp pthread ev)
+target_link_libraries(tcpserver pthread ev)
+target_link_libraries(tcpclient pthread)
 target_link_libraries(dispatch pthread ev)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
