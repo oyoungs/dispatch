@@ -60,10 +60,6 @@ int main(int argc, char *argv[]) /*try*/ {
 
     loop.emit("start");
 
-    oyoung::async(oyoung::get_global_queue(), [=](int) {
-        std::cout << "sync task" << std::endl;
-    }, 0);
-
 
     return loop.exec();
 

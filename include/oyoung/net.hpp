@@ -620,62 +620,53 @@ namespace tcp {
 
         void start()
         {
-            loop.on("io", [=](const any& argument ) {
-                auto tuple = any_cast<std::tuple<int, int>>(argument);
 
-                auto fd = std::get<0>(tuple);
+            auto result = listen();
+            if(result.success()) {
+                loop.on("io", [=](const any &argument) {
+                    auto tuple = any_cast<std::tuple<int, int>>(argument);
 
-                if(fd == descriptor()) {
-                    auto client = accept(10);
-                    if(client) {
-                        loop.start(client->descriptor(), _read_event);
-                        _accepted_clients[client->descriptor()] = client;
-                        loop.emit ("accept", client);
-                    }
-                } else {
-                    auto client = _accepted_clients[fd];
-                    if(client) {
-                        auto length = client->bytes_available();
-                        auto result = client->read(length);
-                        if(result.success()) {
-                            auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
-                            loop.emit ("data",  std::make_tuple(client, bytes));
-                        } else if(result.error() == socket_error::connection_closed) {
-                            client->set_descriptor(fd);
-                            loop.emit ("close", client);
-                        } else {
-                            loop.emit ("error", result.message());
+                    auto fd = std::get<0>(tuple);
+
+                    if (fd == descriptor()) {
+                        auto client = accept(10);
+                        if (client) {
+                            loop.start(client->descriptor(), _read_event);
+                            _accepted_clients[client->descriptor()] = client;
+                            loop.emit("accept", client);
+                        }
+                    } else {
+                        auto client = _accepted_clients[fd];
+                        if (client) {
+                            auto length = client->bytes_available();
+                            auto result = client->read(length);
+                            if (result.success()) {
+                                auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
+                                loop.emit("data", std::make_tuple(client, bytes));
+                            } else if (result.error() == socket_error::connection_closed) {
+                                client->set_descriptor(fd);
+                                loop.emit("close", client);
+                            } else {
+                                loop.emit("error", result.message());
+                            }
                         }
                     }
-                }
 
-            });
+                });
 
 
-            loop.on("close", [=](const any& argument){
-                auto client = any_cast<std::shared_ptr<default_client>>(argument);
-                auto descriptor = client ? client->descriptor() : bad_descriptor;
-                if(descriptor != bad_descriptor) {
-                    loop.stop(descriptor);
-                    _accepted_clients.erase(descriptor);
-                }
-            });
+                loop.on("close", [=](const any &argument) {
+                    auto client = any_cast<std::shared_ptr<default_client>>(argument);
+                    auto descriptor = client ? client->descriptor() : bad_descriptor;
+                    if (descriptor != bad_descriptor) {
+                        loop.stop(descriptor);
+                        _accepted_clients.erase(descriptor);
+                    }
+                });
 
-            if(listen().success()) {
                 loop.start(descriptor(), _read_event);
-            }
-        }
-
-        void close_client(std::shared_ptr<default_client> client)
-        {
-            if(client) {
-                auto descriptor = client->descriptor();
-
-                loop.stop(descriptor);
-                _accepted_clients.erase(descriptor);
-
-                loop.emit ("close", client);
-                client->close();
+            } else {
+                loop.emit("listen_error", std::make_tuple(result.error(), result.message()));
             }
         }
 

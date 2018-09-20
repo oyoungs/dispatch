@@ -8,7 +8,7 @@
 int main(int argc, char **argv)
 {
     std::string address = argc < 2 ? "127.0.0.1": argv[1];
-    int port    = argc < 3 ? 9090: std::strtol(argv[2], nullptr, 10);
+    int port    = argc < 3 ? 9090: (int)std::strtol(argv[2], nullptr, 10);
 
     oyoung::net::tcp::default_client client(address, port);
 
