@@ -398,6 +398,191 @@ namespace oyoung {
         return base_promise<T>(block);
     }
 
+    struct id_allocator
+    {
+        using id_type = std::size_t;
+
+        id_type alloc()
+        {
+            for(id_type begin = 0, end = _allocated.size(); begin < end; ++begin) {
+                if(not _allocated[begin]) {
+                    _allocated[begin] = true;
+                    return begin;
+                }
+            }
+
+            _allocated.emplace_back(false);
+
+            return _allocated.size() - 1;
+        }
+
+        void  dealloc(id_type id)
+        {
+            if(id < _allocated.size()) {
+                _allocated[id] = false;
+            }
+        }
+
+        static id_allocator& shared()
+        {
+            static id_allocator allocator;
+            return allocator;
+        }
+
+    private:
+        id_allocator() = default;
+        std::vector<bool> _allocated;
+    };
+
+    namespace events {
+        struct emitter {
+
+
+            using id_type = id_allocator::id_type;
+            using listener_type = std::function<void(const any &)>;
+            using listener_tuple = std::tuple<id_type /*id*/, listener_type /*callback*/, bool /*once*/>;
+
+            constexpr static id_type invalid_id {0xFFFFFFFFFFFFFFFFULL};
+
+            void set_max_listeners(int count) {
+                _max_listeners = count;
+            }
+
+            int max_listeners() const {
+                return _max_listeners.is_null() ? default_max_listeners : any_cast<int>(_max_listeners);
+            }
+
+
+            void emit(const std::string &event, const any &arguments = {}) {
+                for(auto& tuple: _events[event]) {
+                    auto id = std::get<0>(tuple);
+                    auto func = std::get<1>(tuple);
+                    auto once = std::get<2>(tuple);
+
+                    std::exception_ptr eptr;
+                    try {
+                        if(func) func(arguments);
+                    } catch (...) {
+                        eptr = std::current_exception();
+                    }
+
+                    if (once) remove(event, id);
+
+                    if(eptr) {
+                        std::rethrow_exception(eptr);
+                    }
+
+                }
+            }
+
+            /**
+             * execute the listener when emit the event until the listener removed
+             * @param event
+             * @param listener
+             * @return listener id
+             */
+            id_type on(const std::string &event, const listener_type &listener) {
+                return append(event, listener, false);
+            }
+
+            /**
+             * execute the listener only once when emit the event and auto remove itself
+             * @param event
+             * @param listener
+             * @return
+             */
+
+            id_type once(const std::string &event, const listener_type &listener) {
+                return append(event, listener, true);
+            }
+
+            id_type append(const std::string &event, const listener_type &listener, bool once = false) {
+                if(listener_count() < max_listeners()) {
+                    auto id = id_allocator::shared().alloc();
+                    auto tuple = std::make_tuple(id, listener, once);
+                    _events[event].emplace_back(tuple);
+                    _events_count ++;
+                    return id;
+                }
+                return invalid_id;
+            }
+
+            id_type prepend(const std::string &event, const listener_type &listener, bool once = false) {
+                if(listener_count() < max_listeners()) {
+                    auto id = id_allocator::shared().alloc();
+                    auto tuple = std::make_tuple(id, listener, once);
+                    _events[event].insert(_events[event].begin(), tuple);
+                    _events_count ++;
+                    return id;
+                }
+                return invalid_id;
+            }
+
+            void remove(const std::string &event, id_type id = invalid_id) {
+
+
+                if(_events.find(event) == _events.end()) return;
+
+                auto& events = _events[event];
+                if(id ==  invalid_id) {
+                    std::vector<listener_tuple> tuples;
+                    tuples.swap(events);
+                    for(auto& tuple: tuples) {
+                        id_allocator::shared().dealloc(std::get<0>(tuple));
+                    }
+                    _events_count -= tuples.size();
+                } else {
+                    auto it = events.begin();
+                    while (it != events.end()) {
+                        if(std::get<0>(*it) == id) {
+                            events.erase(it);
+                        } else {
+                            ++it;
+                        }
+                    }
+                    id_allocator::shared().dealloc(id);
+                }
+
+
+            }
+
+            std::vector<listener_type> listeners() const {
+                std::vector<listener_type> listener_list;
+
+                for (const auto &pair: _events) {
+                    for (const auto &tuple: pair.second) {
+                        listener_list.emplace_back(std::get<1>(tuple));
+                    }
+                }
+
+                return listener_list;
+            }
+
+            int listener_count() const {
+                return _events_count;
+            }
+
+            static int default_max_listeners ;
+
+
+        private:
+            struct Domain {
+                any domain;
+                std::map<std::string, std::vector<listener_tuple>> _events;
+                int _events_count;
+                any _max_listeners;
+                any members;
+            } domain;
+
+            std::map<std::string, std::vector<listener_tuple>> _events;
+            int _events_count;
+            any _max_listeners;
+        };
+        int emitter::default_max_listeners{10};
+    }
+
+
+
     struct base_ev_loop {
         thread_local static base_ev_loop *global;
 
@@ -545,8 +730,10 @@ namespace oyoung {
                 for (auto func: listeners[name]) {
                     try {
                         func(ev_data);
-                    } catch (const std::exception &e) {
+                    } catch (const std::exception& e) {
                         emit("exception", e.what());
+                    } catch (...) {
+                        emit("exception", "unknown exception");
                     }
                 }
             }
@@ -560,7 +747,13 @@ namespace oyoung {
                 if (timer && &ev_timer == timer.get()) {
                     auto func = std::get<1>(tuple);
                     if (func) {
-                        func();
+                        try {
+                            func();
+                        } catch (const std::exception& e) {
+                            emit("exception", e.what());
+                        } catch (...) {
+                            emit("exception", "unknown exception");
+                        }
                     }
 
                     select_timer_index = i;

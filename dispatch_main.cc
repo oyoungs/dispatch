@@ -13,6 +13,15 @@ int main(int argc, char **argv)
 
     dispatch_main_queue_default::set_dispatch_main_queue(std::make_shared<dispatch_main_queue_default >(loop));
 
+    oyoung::events::emitter emitter;
+
+    auto tick1 = emitter.on("tick1", [&loop, &emitter](const oyoung::any& arguments) {
+        std::cout << "on tick1" << std::endl;
+    });
+
+    auto tick2 = emitter.once("tick2", [](const oyoung::any& arguments) {
+        std::cout << "on tick2" << std::endl;
+    });
 
     oyoung::async(*queue, [=] {
         std::cout << "dispatch async calling" << std::endl;
@@ -44,6 +53,11 @@ int main(int argc, char **argv)
         auto what = oyoung::any_cast<std::string>(argument);
         std::cout << "exception: " << what << std::endl;
     });
+
+    loop.set_interval([=,&emitter] {
+        emitter.emit("tick1");
+        emitter.emit("tick2");
+    }, std::chrono::seconds(1));
 
     return loop.exec();
 }

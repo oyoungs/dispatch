@@ -125,6 +125,13 @@ struct result
 
     result(): _success(true) {}
 
+    result(const result& other)
+            : _success(other._success), _data_bytes(other._data_bytes), _message(other._message), _error(nullptr) {
+        if(other._error) {
+            _error = std::make_shared<socket_error>(*other._error);
+        }
+    }
+
     explicit result(const socket_error& err, const String& message = "")
         : _success(false), _message(message)
         , _error(std::make_shared<socket_error>(err))
