@@ -16,6 +16,7 @@
 
 /* oyoung includes*/
 #include <oyoung/any.hpp>
+#include <oyoung/singleton.hpp>
 
 
 /* all std includes */
@@ -97,12 +98,12 @@ namespace std {
     {
         static thread::id main_thread_id;
 
-        void set_main_thread()
+        inline void set_main_thread()
         {
              main_thread_id = get_id();
         }
 
-        bool is_main_thread()
+        inline bool is_main_thread()
         {
             return get_id() == main_thread_id;
         }
@@ -226,12 +227,12 @@ namespace oyoung {
         };
 
         static void set_dispatch_main_queue(std::shared_ptr<dispatch_main_queue_base> queue) {
-            mainQ = queue;
+            *singleton<std::shared_ptr<dispatch_main_queue_base>>::only() = queue;
         }
 
         static std::shared_ptr<dispatch_main_queue_base> dispatch_main_queue()
         {
-            return mainQ;
+            return *singleton<std::shared_ptr<dispatch_main_queue_base>>::only();
         }
 
     protected:
@@ -248,7 +249,6 @@ namespace oyoung {
 
     private:
 
-        static std::shared_ptr<dispatch_main_queue_base> mainQ;
 
         void handle_dispatch_main_queue(const any &argument) {
             try {
@@ -260,7 +260,6 @@ namespace oyoung {
         }
     };
 
-    std::shared_ptr<dispatch_main_queue_base> dispatch_main_queue_base::mainQ;
 
     template<typename L>
     struct dispatch_main_queue : public dispatch_main_queue_base {
@@ -277,14 +276,11 @@ namespace oyoung {
         L &loop;
     };
 
-    dispatch_main_queue_base &dispatch_get_main_queue() {
+    inline dispatch_main_queue_base &dispatch_get_main_queue() {
         auto queue = dispatch_main_queue_base::dispatch_main_queue();
-
         if (queue) {
-
             return *queue;
         }
-
         throw std::runtime_error("dispatch main queue not set");
     }
 
@@ -298,13 +294,12 @@ namespace oyoung {
         return std::make_shared<dispatch_queue<N> >(name);
     }
 
-    std::shared_ptr<concurrent_dispatch_queue> dispatch_queue_create(const std::string &name) {
+    inline std::shared_ptr<concurrent_dispatch_queue> dispatch_queue_create(const std::string &name) {
         return std::make_shared<concurrent_dispatch_queue>(name);
     }
 
-    concurrent_dispatch_queue &get_global_queue() {
-        static concurrent_dispatch_queue global_queue("global");
-        return global_queue;
+    inline concurrent_dispatch_queue &get_global_queue() {
+        return *singleton<concurrent_dispatch_queue>::only("global");
     }
 
 
@@ -562,7 +557,7 @@ namespace oyoung {
                 return _events_count;
             }
 
-            static int default_max_listeners ;
+            constexpr static int default_max_listeners{10};
 
 
         private:
@@ -578,16 +573,14 @@ namespace oyoung {
             int _events_count;
             any _max_listeners;
         };
-        int emitter::default_max_listeners{10};
     }
 
 
 
     struct base_ev_loop {
-        thread_local static base_ev_loop *global;
 
         base_ev_loop() {
-            global = this;
+            *thread_local_singleton<base_ev_loop *>::only() = this;
         }
 
         template<typename T>
@@ -607,7 +600,10 @@ namespace oyoung {
         virtual ~base_ev_loop() {}
     };
 
-    thread_local base_ev_loop *base_ev_loop::global = nullptr;
+    inline base_ev_loop * get_ev_loop_global()
+    {
+        return *thread_local_singleton<base_ev_loop *>::only();
+    }
 
 
     template<typename EV_LOOP, typename EV_IO, typename EV_ASYNC, typename EV_TIMER>
