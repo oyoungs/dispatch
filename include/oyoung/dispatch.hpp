@@ -636,9 +636,8 @@ namespace oyoung {
         }
 
         void emit(const std::string &name, const any &argument = {}) override {
-            auto ev_item = std::make_tuple(name, argument);
-            std::unique_lock<std::mutex> lock(queue_lock);
-            queue.push(ev_item);
+            std::lock_guard<std::mutex> lock(queue_lock);
+            queue.push(std::make_tuple(name, argument));
             ev_async->send();
         }
 
@@ -707,19 +706,21 @@ namespace oyoung {
         }
 
         void operator()(ev_async_t &async, int event) {
-            while (not queue.empty()) {
-                std::tuple<std::string, any> ev_item;
-                {
-                    std::unique_lock<std::mutex> lock(queue_lock);
-                    if (!queue.empty()) {
-                        ev_item = queue.front();
-                        queue.pop();
-                    }
-                }
+
+            decltype(queue) q;
+            {
+                std::lock_guard<std::mutex> lock(queue_lock);
+                q.swap(queue);
+            }
+
+            while (!q.empty()) {
+                auto ev_item = q.front();
+                q.pop();
+
 
                 auto name = std::get<0>(ev_item);
 
-                if (name.empty()) return;
+                if (name.empty()) continue;
 
                 auto ev_data = std::get<1>(ev_item);
 
@@ -732,6 +733,7 @@ namespace oyoung {
                         emit("exception", "unknown exception");
                     }
                 }
+
             }
         }
 
