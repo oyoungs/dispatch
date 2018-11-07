@@ -15,6 +15,7 @@ add_executable(any any_main.cc)
 
 add_executable(dispatch dispatch_main.cc)
 add_executable(cli cli_main.cc)
+add_executable(optional otional_main.cc)
 
 
 target_link_libraries(tcpserver pthread ev)

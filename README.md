@@ -210,3 +210,96 @@ int main(int argc, char *argv[]) /*try*/ {
     
     return loop.exec();
 ```
+
+### 6. cli (commond line parser)
+```cpp
+#include <oyoung/cli.hpp>
+#include <iostream>
+
+int main(int argc, char **argv)
+{
+
+    /* parse command line options*/
+    oyoung::cli::parse_options options; 
+
+    /* user arguments*/
+    options.add("name", "--name", 'N', "default"); // --name=<NAME> OR --name NAME OR -N NAME
+    options.add("man", "--man", 'M', false); // --man OR -M OR --man=<BOOL> OR --man/-M <BOOL>, <BOOL> may be ON/OFF/on/off/YES/NO/yes/no/T/F
+
+    try {
+        auto result = oyoung::cli::parse(argc, argv, options); // result will be { "name": "...", "man": true/false }        
+        
+
+        for(const auto& key: result.all_keys()) {
+            std::cout << key << std::endl;
+        }
+
+        for(const auto& value: result) {
+            if(value.is_boolean()) {
+                std::cout << std::boolalpha << oyoung::any_cast<bool >(value) << std::endl;
+            } else if(value.is_string()) {
+                std::cout << oyoung::any_cast<std::string>(value) << std::endl;
+            }
+        }
+
+    } catch (const std::exception& e) {
+        std::cout << e.what();
+    }
+
+    return 0;
+}
+```
+### 7. optional 
+```cpp
+#include <oyoung/optional.hpp>
+#include <iostream>
+
+int main(int argc, char** argv)
+{
+    oyoung::optional<int> n; // init null
+    oyoung::optional<int> n(0); // init with integer 0
+    
+
+
+    /* compare with nullptr */
+    if(n == nullptr) {
+        std::cout << "N is null" << std::endl;
+    }
+
+    /* assign with operator= */
+    n = 100;
+
+    /* compare with nullptr */
+    if(nullptr != n) {
+    
+        /* auto use operator int()*/
+        std::cout << n << std::endl;
+    }
+
+    /*clear value to null*/
+    n.clear();
+
+    /* use the internal value or the default value given by operator() if null*/
+    std::cout << n(1000) << std::endl;
+    
+
+    /* assign*/
+    n.assign(101);
+
+    if(nullptr != n) {
+    
+        std::cout << n << std::endl;
+    }
+
+    int a = 0;
+    
+    /* use let to get value, and condition will be false if value is null */
+    if(n.let(a)) {
+        std::cout << a << std::endl;
+    }
+    
+    
+
+    return 0;
+}
+```
