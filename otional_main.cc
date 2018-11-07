@@ -7,7 +7,8 @@
 
 int main(int argc, char** argv)
 {
-    oyoung::optional<int> n;
+    oyoung::Int$ n;
+    oyoung::Dict$<std::string, int> dict;
 
     if(n == nullptr) {
         std::cout << "N is null" << std::endl;
@@ -24,12 +25,15 @@ int main(int argc, char** argv)
     n.assign(101);
 
     if(nullptr != n) {
-        std::cout << n << std::endl;
+        std::cout << n() << std::endl;
     }
 
-    int a = 0;
-    if(n.let(a)) {
-        std::cout << a << std::endl;
+    dict()["name"] = 1000;
+    (!dict)["age"] = 200;
+    (*dict)["number"] = 30;
+
+    for(auto pair: !dict) {
+        std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
     return 0;

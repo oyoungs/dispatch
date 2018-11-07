@@ -256,8 +256,8 @@ int main(int argc, char **argv)
 
 int main(int argc, char** argv)
 {
-    oyoung::optional<int> n; // init null
-    oyoung::optional<int> n(0); // init with integer 0
+    oyoung::Int$ n;
+    oyoung::Dict$<std::string, int> dict;
     
 
 
@@ -298,7 +298,13 @@ int main(int argc, char** argv)
         std::cout << a << std::endl;
     }
     
-    
+     dict()["name"] = 1000;
+    (!dict)["age"] = 200;
+    (*dict)["number"] = 30;
+
+    for(auto pair: !dict) {
+        std::cout << pair.first << ": " << pair.second << std::endl;
+    }
 
     return 0;
 }

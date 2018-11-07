@@ -6,6 +6,9 @@
 #define DISPATCH_OPTIONAL_HPP
 
 #include <memory>
+#include <string>
+#include <vector>
+#include <map>
 
 namespace oyoung {
     template <typename T>
@@ -74,7 +77,41 @@ namespace oyoung {
             return is_null() ? def: *v;
         }
 
+        T& operator()() {
+            if(is_null()) {
+                v = std::make_shared<T>();
+            }
+            return *v;
+        }
 
+        const T& operator()() const {
+            static const T def {};
+            return v ? *v : def;
+        }
+
+        T& operator!() {
+            if(is_null()) {
+                v = std::make_shared<T>();
+            }
+            return *v;
+        }
+
+        const T& operator!() const {
+            static const T def {};
+            return v ? *v : def;
+        }
+
+        T& operator*() {
+            if(is_null()) {
+                v = std::make_shared<T>();
+            }
+            return *v;
+        }
+
+        const T& operator*() const {
+            static const T def {};
+            return v ? *v : def;
+        }
     private:
         std::shared_ptr<T> v;
     };
@@ -90,5 +127,42 @@ namespace oyoung {
     {
         return opt != nullptr;
     }
+
+
+    template <typename T>
+    using $ = optional<T>;
+
+    using Int$ = $<int>;
+    using Short$ = $<short>;
+    using Long$ = $<long>;
+    using LLong$ = $<long long >;
+    using UInt$ = $<unsigned >;
+    using UShort$ = $<unsigned short>;
+    using ULong$ = $<unsigned long>;
+    using ULLong$ = $<unsigned long long >;
+    using Char$ = $<char>;
+    using UChar$ = $<unsigned char>;
+    using Float$ = $<float >;
+    using Double$ = $<double>;
+    using String$ = $<std::string>;
+
+
+
+    template <typename K, typename V>
+    using Dict = std::map<K, V>;
+
+    template <typename K, typename V>
+    using Dict$ = $<Dict<K,V> >;
+
+    template <typename T>
+    using Array = std::vector<T>;
+
+    template <typename T>
+    using Array$ = $<Array<T> >;
+
+
 }
+
+
+
 #endif //DISPATCH_OPTIONAL_HPP
