@@ -251,6 +251,21 @@ namespace oyoung
             
         }
 
+        template <typename T>
+        bool try_get(T& value) {
+            if(_holder && typeid(T).name() == _holder->type_name()) {
+                value = std::dynamic_pointer_cast<place_holder<T>>(_holder)->value;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        std::string type_name() const
+        {
+            return is_null() ? "null": _holder->type_name();
+        }
+
         template<typename T>
         operator T() const
         {
@@ -276,6 +291,15 @@ namespace oyoung
                 || type == typeid(int).name() 
                 || type == typeid(long).name() 
                 || type == typeid(long long).name();
+        }
+
+        bool is_boolean() const  noexcept
+        {
+            if(is_null()) return false;
+            auto type = _holder->type_name();
+            return type == typeid(bool).name()
+                   || is_number_integer()
+                   || is_number_unsigned();
         }
 
         bool is_number_unsigned() const noexcept
