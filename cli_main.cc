@@ -7,7 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
-using llong = long long;
+
 
 int main(int argc, char **argv)
 {
@@ -29,9 +29,13 @@ int main(int argc, char **argv)
             if(value.is_string()) {
                 std::cout << oyoung::any_cast<std::string>(value) << std::endl;
             } else if(value.is_number_integer()) {
-                std::cout << oyoung::any_cast<llong>(value) << std::endl;
+                std::cout << oyoung::any_cast<oyoung::cli::options_integer>(value) << std::endl;
             } else if(value.is_boolean()) {
                 std::cout << std::boolalpha << oyoung::any_cast<bool >(value) << std::endl;
+            } else if(value.is_number_unsigned()) {
+                std::cout << oyoung::any_cast<oyoung::cli::options_unsigned >(value) << std::endl;
+            } else if(value.is_number_float()) {
+                std::cout << oyoung::any_cast<oyoung::cli::options_float>(value) << std::endl;
             }
         }
 
