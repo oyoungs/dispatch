@@ -243,6 +243,11 @@ namespace oyoung
         template<typename T>
         T value() const
         {
+            static_assert(not std::is_reference<T>::value,
+                          "value() cannot be used with reference types");
+            static_assert(std::is_default_constructible<T>::value,
+                          "types must be DefaultConstructible when used with value()");
+
             if(_holder && typeid(T).name() == _holder->type_name()) {
                 return std::dynamic_pointer_cast<place_holder<T>>(_holder)->value;
             } else {
@@ -297,9 +302,7 @@ namespace oyoung
         {
             if(is_null()) return false;
             auto type = _holder->type_name();
-            return type == typeid(bool).name()
-                   || is_number_integer()
-                   || is_number_unsigned();
+            return type == typeid(bool).name();
         }
 
         bool is_number_unsigned() const noexcept

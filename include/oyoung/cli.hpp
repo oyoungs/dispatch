@@ -11,6 +11,7 @@
 #include <vector>
 #include <typeinfo>
 
+
 namespace oyoung {
     namespace cli {
 
@@ -111,19 +112,23 @@ namespace oyoung {
 
                 }
 
-
-                if(arg == sname) {
-                    if(i + 1 < length) {
-                        const auto& next_arg = args.at(i + 1);
-                        if(next_arg[0] != '-') {
-                            value = next_arg;
-                            return true;
+                if(arg.find(sname) != arg.npos) {
+                    if (arg == sname) {
+                        if (i + 1 < length) {
+                            const auto &next_arg = args.at(i + 1);
+                            if (next_arg[0] != '-') {
+                                value = next_arg;
+                                return true;
+                            } else {
+                                value = def;
+                                return true;
+                            }
                         } else {
                             value = def;
                             return true;
                         }
                     } else {
-                        value = def;
+                        value = arg.substr(2);
                         return true;
                     }
                 }
@@ -132,6 +137,9 @@ namespace oyoung {
         }
 
         using options = oyoung::any;
+        using options_integer = long long;
+        using options_unsigned = unsigned long long;
+        using options_float = double;
 
         using parse_option = std::tuple<std::string, std::string, char, oyoung::any>;
         struct parse_options {
@@ -212,28 +220,62 @@ namespace oyoung {
                 auto short_name = std::get<2>(opt);
                 auto default_v = std::get<3>(opt);
 
-                if(default_v.is_boolean()) {
-                    bool value = false;
-                    if(args.get_boolean(value, long_name, short_name)) {
-                        result[name] = value;
-                    } else {
-                        result[name] = any_cast<bool>(default_v);
-                    }
-                } else if(default_v.is_number_integer()) {
-                    int value {0};
-                    if(args.get(value, long_name, short_name, value)) {
-                        result[name] = value;
-                    } else {
-                        result[name] = any_cast<int>(default_v);
-                    }
-                } else if(default_v.is_string()) {
 
-                    std::string value {};
-                    if(args.get_string(value, long_name, short_name, value)) {
-                        result[name] = value;
-                    } else {
-                        result[name] = any_cast<std::string>(default_v);
+
+                if(default_v.is_number_integer()) {
+                    options_integer value {0};
+                    if(default_v.type_name() == typeid(int).name()) {
+                        value = (options_integer)any_cast<int>(default_v);
+                    } else if(default_v.type_name() == typeid(short).name()) {
+                        value = (options_integer)any_cast<short >(default_v);
+                    } else if(default_v.type_name() == typeid(char).name()) {
+                        value = (options_integer)any_cast<char >(default_v);
+                    } else if(default_v.type_name() == typeid(long).name()) {
+                        value = (options_integer)any_cast<long >(default_v);
+                    } else if(default_v.type_name() == typeid(options_integer).name()) {
+                        value = any_cast<options_integer>(default_v);
                     }
+
+                    args.get(value, long_name, short_name, value);
+                    result[name] = value;
+
+                } else if(default_v.is_number_unsigned()) {
+                    options_unsigned value {0};
+
+                    if(default_v.type_name() == typeid(unsigned).name()) {
+                        value = (options_unsigned)any_cast<unsigned >(default_v);
+                    } else if(default_v.type_name() == typeid(unsigned short).name()) {
+                        value = (options_unsigned)any_cast<unsigned short >(default_v);
+                    } else if(default_v.type_name() == typeid(unsigned char).name()) {
+                        value = (options_unsigned)any_cast<unsigned char >(default_v);
+                    } else if(default_v.type_name() == typeid(unsigned long).name()) {
+                        value = (options_unsigned)any_cast<unsigned long >(default_v);
+                    } else if(default_v.type_name() == typeid(options_unsigned).name()) {
+                        value = any_cast<options_unsigned>(default_v);
+                    }
+                    args.get(value, long_name, short_name, value);
+                    result[name] = value;
+
+                } else if(default_v.is_number_float()) {
+                    options_float value {0};
+                    if(default_v.type_name() == typeid(float).name()) {
+                        value = (options_float) any_cast<float>(default_v);
+                    } else if(default_v.type_name() == typeid(options_float).name()) {
+                        value = any_cast<options_float >(default_v);
+                    }
+
+                    args.get(value, long_name, short_name, value);
+                    result[name] = value;
+
+                } else if(default_v.is_boolean()) {
+                    bool value = default_v;
+                    args.get_boolean(value, long_name, short_name);
+                    result[name] = value;
+
+                } else if(default_v.is_string()) {
+                    std::string value  = default_v;
+                    args.get_string(value, long_name, short_name, value);
+                    result[name] = value;
                 }
             }
             return  result;

@@ -58,66 +58,77 @@ namespace oyoung {
     {
         char *p = nullptr;
         value = static_cast<int>(std::strtol(string.c_str(), &p, 10));
+        return p && p != string.data();
     }
 
     inline bool from_string(long& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtol(string.c_str(), &p, 10);
+        return p && p != string.data();
     }
 
     inline bool from_string(long long& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtoll(string.c_str(), &p, 10);
+        return p && p != string.data();
     }
 
     inline bool from_string(unsigned char& value, const std::string& string)
     {
         char *p = nullptr;
         value = static_cast<unsigned char>(std::strtoul(string.c_str(), &p, 10));
+        return p && p != string.data();
     }
 
     inline bool from_string(unsigned short &value, const std::string& string)
     {
         char *p = nullptr;
         value = static_cast<unsigned short >(std::strtoul(string.c_str(), &p, 10));
+        return p && p != string.data();
     }
 
     inline bool from_string(unsigned & value, const std::string& string)
     {
         char *p = nullptr;
         value = static_cast<unsigned >(std::strtoul(string.c_str(), &p, 10));
+        return p && p != string.data();
     }
 
     inline bool from_string(unsigned long& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtoul(string.c_str(), &p, 10);
+        return p && p != string.data();
     }
 
     inline bool from_string(unsigned long long& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtoull(string.c_str(), &p, 10);
+        return p && p != string.data();
     }
 
     inline bool from_string(float& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtof(string.c_str(), &p);
+        return p && p != string.data();
     }
 
     inline bool from_string(double& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtod(string.c_str(), &p);
+        return p && p != string.data();
     }
 
     inline bool from_string(long double& value, const std::string& string)
     {
         char *p = nullptr;
         value = std::strtold(string.c_str(), &p);
+        return p && p != string.data();
     }
 
     inline std::string to_string(char c)
