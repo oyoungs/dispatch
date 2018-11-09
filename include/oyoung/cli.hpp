@@ -50,7 +50,8 @@ namespace oyoung {
         };
 
         inline bool arguments::get_boolean(bool &value, const std::string &long_name, char short_name) {
-            for(const auto& arg: args) {
+            for(int i = 1, length = args.size(); i < length; ++i ) {
+                const auto& arg = args.at(i);
                 if(arg.find(long_name) != arg.npos) {
                     if(arg == long_name) {
                         value = true;
@@ -83,9 +84,9 @@ namespace oyoung {
 
         inline bool arguments::get_string(std::string &value, const std::string &long_name, char short_name, const std::string& def) {
             char sname[] = {'-', short_name, 0};
-            for(int i = 0, length = args.size(); i < length; ++i ) {
+            for(int i = 1, length = args.size(); i < length; ++i ) {
                 const auto& arg = args.at(i);
-                if(arg.find(long_name) != arg.npos) {
+                if(arg.substr(0, long_name.size()) == long_name) {
                     if(arg == long_name) {
                         if(i + 1 < length) {
                             const auto& next_arg = args.at(i + 1);
@@ -112,7 +113,7 @@ namespace oyoung {
 
                 }
 
-                if(arg.find(sname) != arg.npos) {
+                if(arg.substr(0, 2) == sname) {
                     if (arg == sname) {
                         if (i + 1 < length) {
                             const auto &next_arg = args.at(i + 1);
