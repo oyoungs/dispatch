@@ -89,17 +89,10 @@ namespace oyoung {
             return v ? *v : def;
         }
 
-        T& operator!() {
-            if(is_null()) {
-                v = std::make_shared<T>();
-            }
-            return *v;
+        bool operator!() const {
+            return  is_null();
         }
 
-        const T& operator!() const {
-            static const T def {};
-            return v ? *v : def;
-        }
 
         T& operator*() {
             if(is_null()) {

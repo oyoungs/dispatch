@@ -29,10 +29,10 @@ int main(int argc, char** argv)
     }
 
     dict()["name"] = 1000;
-    (!dict)["age"] = 200;
+    (*dict)["age"] = 200;
     (*dict)["number"] = 30;
 
-    for(auto pair: !dict) {
+    for(auto pair: *dict) {
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
