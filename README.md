@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 **example code:**
 
 ```c++
-#include <oyoung/dispatch.hpp>
+#include <oyoung/event.hpp>
 #include <ev++.h>
 #include <iostream>
 
