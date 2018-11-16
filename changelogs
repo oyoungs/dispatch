@@ -1,0 +1,6 @@
+==========
+1.0.5
+2018-11-16
+==========
+1. Move event_loop to event.hpp from dispatch.hpp
+
