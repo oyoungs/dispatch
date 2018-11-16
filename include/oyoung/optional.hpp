@@ -60,7 +60,7 @@ namespace oyoung {
 
         operator T() const {
             if(is_null()) {
-                throw std::runtime_error("Null cannot be tranform to value");
+                throw std::runtime_error("Null cannot be transform to value");
             }
             return *v;
         }
