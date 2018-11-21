@@ -19,6 +19,7 @@ namespace oyoung {
         optional(T&& value): v(std::make_shared<T>(std::move(value))) {}
 
         optional(const optional& other): v(other.v) {}
+        optional(optional&& other): v(std::move(other.v)) {}
 
         bool is_null() const {
             return v == nullptr;
