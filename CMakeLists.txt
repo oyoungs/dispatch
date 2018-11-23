@@ -16,11 +16,13 @@ add_executable(any any_main.cc)
 add_executable(dispatch dispatch_main.cc)
 add_executable(cli cli_main.cc)
 add_executable(optional optional_main.cc)
+add_executable(gomain go_main.cc)
 
 
 target_link_libraries(tcpserver pthread ev)
 target_link_libraries(tcpclient pthread)
 target_link_libraries(dispatch pthread ev)
+target_link_libraries(gomain pthread)
 #target_link_libraries(cli pthread spdlog)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
