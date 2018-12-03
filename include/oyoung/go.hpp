@@ -23,7 +23,7 @@ namespace oyoung {
 
         channel(channel &&other) : q_max(other.q_max), q(std::move(other.q)) { other.q_max = 0; }
 
-        channel &operator<<(const T &value) {
+        void set(const T& value) {
             std::unique_lock<std::mutex> lock(q_mutex);
             writable_or_close.wait(lock, [=] {
                 return q->size() < q_max || !channel_open;
@@ -33,19 +33,30 @@ namespace oyoung {
                 q->push(value);
                 readable_or_close.notify_one();
             }
-            return *this;
         }
 
-        channel &operator>>(T &value) {
+        bool get(T& value) const {
             std::unique_lock<std::mutex> lock(q_mutex);
             readable_or_close.wait(lock, [=] {
                 return q->size() > 0 || !channel_open;
             });
-            if (q->size() > 0) {
+            if (!q->empty()) {
                 value = q->front();
                 q->pop();
                 writable_or_close.notify_one();
+                return true;
             }
+            return false;
+        }
+
+
+        channel &operator<<(const T &value) {
+            set(value);
+            return *this;
+        }
+
+        channel &operator>>(T &value) {
+            get(value);
             return *this;
         }
 
@@ -55,12 +66,16 @@ namespace oyoung {
             readable_or_close.notify_all();
         }
 
+        ~channel() {
+            close();
+        }
+
     private:
         int q_max;
         bool channel_open{true};
         std::shared_ptr<std::queue<T>> q;
-        std::mutex q_mutex;
-        std::condition_variable readable_or_close, writable_or_close;
+        mutable std::mutex q_mutex;
+        mutable std::condition_variable readable_or_close, writable_or_close;
     };
 
     template <typename T>

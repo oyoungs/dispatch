@@ -192,8 +192,7 @@ namespace oyoung {
                     if (running) {
                         func = _task_queue.front();
                         _task_queue.pop();
-
-                    }
+                    } else break;
                 }
 
                 if (func) {
