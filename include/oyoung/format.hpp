@@ -6,6 +6,16 @@
 #define DISPATCH_FORMAT_HPP
 
 #include <string>
+#include <sstream>
+
+namespace std {
+    std::string to_string(double value, int precision) {
+        std::ostringstream stream;
+        stream.precision(precision);
+        stream << std::fixed << value ;
+        return stream.str();
+    }
+}
 
 namespace oyoung {
 
@@ -19,6 +29,16 @@ namespace oyoung {
 
             if(holder >= 0) {
                 replace("%" + std::to_string(holder), std::to_string(value));
+            }
+
+            return *this;
+        }
+
+        formatter& arg(double value, int precision) {
+            auto holder = current_place_holder();
+
+            if(holder >= 0) {
+                replace("%" + std::to_string(holder), std::to_string(value, precision));
             }
 
             return *this;
