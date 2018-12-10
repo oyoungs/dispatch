@@ -9,7 +9,7 @@
 #include <sstream>
 
 namespace std {
-    std::string to_string(double value, int precision) {
+    inline std::string to_string(double value, int precision) {
         std::ostringstream stream;
         stream.precision(precision);
         stream << std::fixed << value ;
