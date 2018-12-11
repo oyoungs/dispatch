@@ -19,5 +19,9 @@ int main(int, char**)
                       .to_string()
               << std::endl;
 
+    std::cout << oyoung::formatter::time_format(std::chrono::system_clock::now(), "%Ec") << std::endl;
+
+    std::cout << oyoung::format("Now: %1").arg(std::chrono::system_clock::now(), "%Y-%m-%d %H:%M:%S").to_string() << std::endl;
+
     return 0;
 }

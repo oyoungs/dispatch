@@ -8,6 +8,9 @@
 #include <string>
 #include <sstream>
 
+#include <chrono>
+#include <iomanip>
+
 namespace std {
     inline std::string to_string(double value, int precision) {
         std::ostringstream stream;
@@ -65,6 +68,17 @@ namespace oyoung {
             return *this;
         }
 
+        template <typename Clock, typename Duration>
+        formatter& arg(const std::chrono::time_point<Clock, Duration>& time_point, const std::string& fmt) {
+            auto holder = current_place_holder();
+            auto value = time_format(time_point, fmt);
+
+            if(holder >= 0) {
+                replace("%" + std::to_string(holder), value);
+            }
+
+            return *this;
+        }
 
 
         formatter& replace(const std::string& src, const std::string& target) {
@@ -76,6 +90,16 @@ namespace oyoung {
             }
 
             return *this;
+        }
+
+        template <typename Clock, typename Duration>
+        static std::string time_format(const std::chrono::time_point<Clock, Duration>& time_point, const std::string& fmt)
+        {
+            auto now = Clock::now();
+            auto time = Clock::to_time_t(now);
+            auto puttime  = std::put_time(std::localtime(&time), fmt.c_str());
+            auto ostream = std::ostringstream {};
+            return (ostream << puttime, ostream).str();
         }
 
         std::string to_string() const  {
