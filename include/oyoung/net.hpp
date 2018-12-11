@@ -8,6 +8,7 @@
 #define OYOUNG_NET_HPP
 
 #include <oyoung/any.hpp>
+#include <oyoung/event.hpp>
 
 #include <map>
 #include <string>
@@ -612,13 +613,12 @@ namespace tcp {
 
 
 
-    template<typename L>
     struct default_server: public server<unix_tcp_socket_ctrl>
     {
 
 
-        default_server(const String& address, Int32 port, L& loop)
-            : server(address, port), loop(loop), _read_event(0) {}
+        default_server(const String& address, Int32 port)
+            : server(address, port),  _read_event(0) {}
 
         void set_read_event(int event)
         {
@@ -630,7 +630,7 @@ namespace tcp {
 
             auto result = listen();
             if(result.success()) {
-                loop.on("io", [=](const any &argument) {
+                on("io", [=](const any &argument) {
                     auto tuple = any_cast<std::tuple<int, int>>(argument);
 
                     auto fd = std::get<0>(tuple);
@@ -638,9 +638,9 @@ namespace tcp {
                     if (fd == descriptor()) {
                         auto client = accept(10);
                         if (client) {
-                            loop.start(client->descriptor(), _read_event);
+                            start(client->descriptor(), _read_event);
                             _accepted_clients[client->descriptor()] = client;
-                            loop.emit("accept", client);
+                            emit("accept", client);
                         }
                     } else {
                         auto client = _accepted_clients[fd];
@@ -649,12 +649,12 @@ namespace tcp {
                             auto result = client->read(length);
                             if (result.success()) {
                                 auto bytes = std::make_shared<Bytes>(std::move(result.bytes()));
-                                loop.emit("data", std::make_tuple(client, bytes));
+                                emit("data", std::make_tuple(client, bytes));
                             } else if (result.error() == socket_error::connection_closed) {
                                 client->set_descriptor(fd);
-                                loop.emit("close", client);
+                                emit("close", client);
                             } else {
-                                loop.emit("error", result.message());
+                                emit("error", result.message());
                             }
                         }
                     }
@@ -662,18 +662,18 @@ namespace tcp {
                 });
 
 
-                loop.on("close", [=](const any &argument) {
+                on("close", [=](const any &argument) {
                     auto client = any_cast<std::shared_ptr<default_client>>(argument);
                     auto descriptor = client ? client->descriptor() : bad_descriptor;
                     if (descriptor != bad_descriptor) {
-                        loop.stop(descriptor);
+                        stop(descriptor);
                         _accepted_clients.erase(descriptor);
                     }
                 });
 
-                loop.start(descriptor(), _read_event);
+                start(descriptor(), _read_event);
             } else {
-                loop.emit("listen_error", std::make_tuple(result.error(), result.message()));
+                emit("listen_error", std::make_tuple(result.error(), result.message()));
             }
         }
 
@@ -682,9 +682,27 @@ namespace tcp {
             return _accepted_clients.size();
         }
 
+        void emit(const std::string& event, const any& arguments)
+        {
+            _emitter.emit(event, arguments);
+        }
+
+        events::emitter::id_type on(const std::string& event, const events::emitter::listener_type& listener)
+        {
+            return _emitter.on(event, listener);
+        }
+
+        void start(int descriptor, int events) {
+            emit("start", std::make_tuple(descriptor, events));
+        }
+
+        void stop(int descriptor) {
+            emit("stop", descriptor);
+        }
+
     private:
-        L& loop;
         int _read_event;
+        events::emitter _emitter;
         std::map<int, std::shared_ptr<default_client>> _accepted_clients;
     };
 #endif

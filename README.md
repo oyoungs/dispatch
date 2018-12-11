@@ -143,6 +143,11 @@ Note:
 
 ## 5. tcp server
 
+- Don't forget to add build dependency libev
+```cmake
+target_link_libraries(target ev)
+```
+
 **example code:**
 
 ```c++
@@ -150,20 +155,45 @@ Note:
 
 
 #include <oyoung/net.hpp>
-#include <oyoung/dispatch.hpp>
 #include <nlohmann/json.hpp>
 #include <ev++.h>
 
 using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
 
-int main(int argc, char *argv[]) /*try*/ {
-    
+int main(int argc, char *argv[]) 
+{
+
     default_event_loop loop {};
 
-    oyoung::net::tcp::default_server<default_event_loop> server("0.0.0.0", 9090, loop);
+    oyoung::net::tcp::default_server server("0.0.0.0", 9090);
 
     server.set_read_event(ev::READ);
 
+    server.on("start", [=, &loop](const oyoung::any& arguments) {
+        auto tuple = oyoung::any_cast<std::tuple<int, int>>(arguments);
+        loop.start(std::get<0>(tuple), std::get<1>(tuple));
+    });
+
+    server.on("stop", [=, &loop](const oyoung::any& arguments) {
+        auto descriptor = oyoung::any_cast<int>(arguments);
+        loop.stop(descriptor);
+    });
+
+    server.on("accept", [=, &loop](const oyoung::any& arguments) {
+       loop.emit("accept", arguments);
+    });
+
+    server.on("data", [=, &loop](const oyoung::any& arguments) {
+       loop.emit("data", arguments);
+    });
+
+    server.on("close", [=, &loop](const oyoung::any& arguments) {
+       loop.emit("close", arguments);
+    });
+
+    loop.on("io", [=, &server](const oyoung::any& arguments) {
+       server.emit("io", arguments);
+    });
 
     loop.on("accept", [&](const oyoung::any& argument) {
         auto client = oyoung::any_cast<std::shared_ptr<oyoung::net::tcp::default_client>>(argument);
@@ -205,10 +235,13 @@ int main(int argc, char *argv[]) /*try*/ {
     loop.set_interval([&] {
         std::cout << "loop is running, client count: " << server.count() << std::endl;
     }, std::chrono::seconds(1));
-    
+
     loop.emit("start");
-    
+
+
     return loop.exec();
+
+}
 ```
 
 ### 6. cli (commond line parser)
