@@ -14,8 +14,8 @@ int main(int argc, char **argv)
 
     oyoung::cli::parse_options options;
 
-    options.add("name", "--name", 'N', "default");
-    options.add("man", "--man", 'M', false);
+    options.add("name", "--name", 0, "default");
+    options.add("man", "--man", 'm', false);
     options.add("threads", "--threads", 'j', 10);
 
     try {
@@ -25,19 +25,12 @@ int main(int argc, char **argv)
             std::cout << key << std::endl;
         }
 
-        for(const auto& value: result) {
-            if(value.is_string()) {
-                std::cout << oyoung::any_cast<std::string>(value) << std::endl;
-            } else if(value.is_number_integer()) {
-                std::cout << oyoung::any_cast<oyoung::cli::options_integer>(value) << std::endl;
-            } else if(value.is_boolean()) {
-                std::cout << std::boolalpha << oyoung::any_cast<bool >(value) << std::endl;
-            } else if(value.is_number_unsigned()) {
-                std::cout << oyoung::any_cast<oyoung::cli::options_unsigned >(value) << std::endl;
-            } else if(value.is_number_float()) {
-                std::cout << oyoung::any_cast<oyoung::cli::options_float>(value) << std::endl;
-            }
-        }
+        std::string name = result["name"];
+        std::cout << "Name: " << name << std::endl;
+        bool man = result["man"];
+        std::cout << "Man: " << man << std::endl;
+        oyoung::cli::options_integer thread = result["threads"];;
+        std::cout << "threads: " << thread << std::endl;
 
     } catch (const std::exception& e) {
         std::cout << e.what();
