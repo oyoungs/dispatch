@@ -232,7 +232,7 @@ namespace oyoung
         {
             return _holder && _holder->type_name() == typeid(std::string).name();
         }
-        
+
 
 
         
@@ -281,6 +281,14 @@ namespace oyoung
         bool is_number() const noexcept
         {
             return is_number_integer() || is_number_unsigned() || is_number_float();
+        }
+
+        template <typename T>
+        T* pointer() const {
+            if(_holder && typeid(T).name() == _holder->type_name()) {
+                return &(std::dynamic_pointer_cast<place_holder<T>>(_holder)->value);
+            }
+            return nullptr;
         }
 
         bool is_number_integer() const noexcept
@@ -532,6 +540,31 @@ namespace oyoung
     T any_cast(const any& a)
     {
         return a.value<T>();
+    }
+
+
+    template<class T>
+    T any_cast(any& a)
+    {
+        return a.value<T>();
+    }
+
+    template<class T>
+    T any_cast(any&& a)
+    {
+        return a.value<T>();
+    }
+
+    template<class T>
+    const T* any_cast(const any* a) noexcept
+    {
+        return a->pointer<T>();
+    }
+
+    template<class T>
+    T* any_cast(any* a) noexcept
+    {
+        return a->pointer<T>();
     }
 }
 

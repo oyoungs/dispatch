@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     oyoung::cli::parse_options options;
 
     options.add("name", "--name", 0, "default");
-    options.add("man", "--man", 'm', false);
+    options.add("man", "--super-man", 'm', false);
     options.add("threads", "--threads", 'j', 10);
 
     try {
