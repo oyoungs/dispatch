@@ -233,10 +233,6 @@ namespace oyoung
             return _holder && _holder->type_name() == typeid(std::string).name();
         }
         
-        operator bool() const noexcept
-        {
-            return not is_null();
-        }
 
 
         
