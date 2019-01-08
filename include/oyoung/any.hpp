@@ -28,11 +28,18 @@ namespace oyoung
     template<typename T>
     struct place_holder: public holder
     {
-        place_holder(const T& v): value(v) {}
+        using value_type = typename std::remove_reference<T>::type;
+        using reference_type = value_type &;
+        using const_reference_type = const value_type &;
+        using pointer_type = value_type *;
+
+        place_holder() : value() {}
+        place_holder(const_reference_type v): value(v) {}
+        place_holder(value_type&& v): value(std::move(v)) {}
 
         std::string type_name() const override
         {
-            return typeid(T).name();
+            return typeid(value_type).name();
         }
 
         std::shared_ptr<holder> clone() const override
@@ -45,7 +52,7 @@ namespace oyoung
             return sizeof(value);
         }
 
-        T value;
+        value_type value;
     };
 
     struct any
@@ -53,14 +60,16 @@ namespace oyoung
         using array_t = std::vector<any>;
         using object_t = std::map<std::string, any>;
 
-        any() {}
+        constexpr any() noexcept {}
 
 
         template<typename T>
-        any(const T& value)
-            : _holder(std::make_shared<place_holder<T>>(value)) {}
+        any(T&& value)
+            : _holder(std::make_shared< place_holder<T>>(std::move(value))) {
+        }
         
-        any(const char *str): _holder(std::make_shared<place_holder<std::string>>(str)) {}
+        any(const char *str): _holder(std::make_shared<place_holder<std::string>>(str)) {
+        }
         
         any(const any& other): _holder(other._holder) {}
 
@@ -68,9 +77,8 @@ namespace oyoung
             : _holder(other._holder) { other._holder.reset(); }
 
         any(const std::initializer_list<any>& list)
-            : _holder (std::make_shared<place_holder<std::vector<any>>>(list))
+            : _holder (std::make_shared<place_holder<array_t>>(list))
         {
-
         }
         
         any& operator=(const any& other) 
@@ -80,15 +88,14 @@ namespace oyoung
         }
         
         template<typename T>
-        any& operator=(const T& val)
+        any& operator=(T&& val)
         {
             if(_holder == nullptr 
                 || _holder->type_name() != typeid(T).name()
                 || _holder.use_count() > 1) {
-                _holder = std::make_shared<place_holder<T>>(val);
-            } else {
-            std::dynamic_pointer_cast<place_holder<T>>(_holder)->value = val;
+                _holder = std::make_shared<place_holder<T>>();
             }
+            std::dynamic_pointer_cast<place_holder<T>>(_holder)->value = std::move(val);
             return *this;
         }
 
@@ -122,7 +129,7 @@ namespace oyoung
                 return std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value.size();
             }
 
-            return 1;
+            return is_null() ? 0 : 1;
         }
 
 
@@ -139,43 +146,20 @@ namespace oyoung
 
         void push_back(const any& value)
         {
-            if(_holder == nullptr || _holder->type_name() != typeid(std::vector<any>).name()) {
-                std::vector<any> v{value};
-                _holder = std::make_shared<place_holder<std::vector<any>>>(v);
-            } else {
-                std::dynamic_pointer_cast<place_holder<std::vector<any>>>(_holder)->value.push_back(value);
+            if(_holder == nullptr || _holder->type_name() != typeid(array_t).name()) {
+                _holder = std::make_shared<place_holder<array_t>>();
             }
-
+            std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value.push_back(value);
         }
 
-        const any& operator[](std::size_t index) const
+        template <typename ...Args>
+        void emplace_back(Args&& ...args)
         {
             if(_holder == nullptr || _holder->type_name() != typeid(array_t).name()) {
-                return any_null();
-            } else {
-                return (std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value)[index];
+                _holder = std::make_shared<place_holder<array_t> >();
             }
-        }
+            std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value.emplace_back(std::forward<Args>(args)...);
 
-        any& operator [](std::size_t index)
-        {
-            if(_holder == nullptr || _holder->type_name() != typeid(array_t).name()) {
-                std::vector<any> v;
-                _holder = std::make_shared<place_holder<array_t>>(v);
-            }
-            return (std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value)[index];
-        }
-
-        template<typename T>
-        void insert(const std::string& key, const T& value)
-        {
-            insert(key, any(value));
-        }
-
-        template<typename T>
-        void insert(const char *key, const T& value)
-        {
-            insert(key, any(value));
         }
 
         void insert(const char * key, const any& value)
@@ -186,12 +170,11 @@ namespace oyoung
         void insert(const std::string& key, const any& value)
         {
             if(_holder == nullptr || _holder->type_name() != typeid(object_t).name()) {
-                object_t m { {key, value} };
-                _holder = std::make_shared<place_holder<object_t>>(m);
-            } else {
-                (std::dynamic_pointer_cast<place_holder<object_t>>(_holder)->value)
-                        .insert(std::make_pair(key, value));
+                _holder = std::make_shared<place_holder<object_t>>();
             }
+            (std::dynamic_pointer_cast<place_holder<object_t>>(_holder)->value)
+                        .insert(std::make_pair(key, value));
+
         }
 
         const any& operator [](const std::string& key) const
@@ -210,16 +193,37 @@ namespace oyoung
 
         any& operator [](const std::string& key)
         {
-            if(_holder == nullptr || _holder->type_name() != typeid(std::map<std::string, any>).name()) {
-                std::map<std::string, any> m { {key, any{}} };
-                _holder = std::make_shared<place_holder<std::map<std::string, any>>>(m);
+            if(_holder == nullptr || _holder->type_name() != typeid(object_t).name()) {
+                _holder = std::make_shared<place_holder<object_t>>( object_t { {key, any{}} });
             }
-            return (std::dynamic_pointer_cast<place_holder<std::map<std::string, any>>>(_holder)->value)[key];
+            return (std::dynamic_pointer_cast<place_holder<object_t>>(_holder)->value)[key];
         }
 
         any& operator [](const char * key)
         {
             return (*this)[std::string(key)];
+        }
+
+        any& operator [](int index)
+        {
+            if(!is_array()) {
+                throw std::invalid_argument("operator[](index) only use for array");
+            }
+            if(index >= count()) {
+                throw std::out_of_range("index is much more than size");
+            }
+            return (std::dynamic_pointer_cast<place_holder<array_t >>(_holder)->value)[index];
+        }
+
+        const any& operator [](int index) const
+        {
+            if(!is_array()) {
+                throw std::invalid_argument("operator[](index) only use for array");
+            }
+            if(index >= count()) {
+                throw std::out_of_range("index is much more than size");
+            }
+            return (std::dynamic_pointer_cast<place_holder<array_t >>(_holder)->value)[index];
         }
 
         std::string value(const char* def) const noexcept
