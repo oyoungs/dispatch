@@ -102,6 +102,12 @@ namespace oyoung
 
         }
 
+        template<typename ValueType>
+        any(const ValueType& value )
+                : _holder(std::make_shared<place_holder<ValueType>>(value)) {
+
+        }
+
         any(const std::initializer_list<any>& list)
             : _holder (std::make_shared<place_holder<array_t>>(list))
         {
