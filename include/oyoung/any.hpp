@@ -14,8 +14,21 @@
 #include <cstddef>
 #include <initializer_list>
 
+
 namespace oyoung
 {
+
+    template <bool B, class T = void>
+    struct disable_if_c {
+        typedef T type;
+    };
+
+    template <class T>
+    struct disable_if_c<true, T> {};
+
+    template <class Cond, class T = void>
+    struct disable_if : public disable_if_c<Cond::value, T> {};
+
     struct holder
     {
 
@@ -33,9 +46,11 @@ namespace oyoung
         using const_reference_type = const value_type &;
         using pointer_type = value_type *;
 
-        place_holder() : value() {}
-        place_holder(const_reference_type v): value(v) {}
-        place_holder(value_type&& v): value(std::move(v)) {}
+        template <typename ...Args>
+        place_holder(Args&& ...args): value(std::forward<Args>(args)...) {}
+
+        place_holder(const place_holder& other): value(other.value) {}
+        place_holder(place_holder&& other): value(std::move(other.value)) {}
 
         std::string type_name() const override
         {
@@ -55,49 +70,73 @@ namespace oyoung
         value_type value;
     };
 
-    struct any
+    class any
     {
+    public:
         using array_t = std::vector<any>;
         using object_t = std::map<std::string, any>;
 
         constexpr any() noexcept {}
 
 
-        template<typename T>
-        any(T&& value)
-            : _holder(std::make_shared< place_holder<T>>(std::move(value))) {
-        }
+
         
         any(const char *str): _holder(std::make_shared<place_holder<std::string>>(str)) {
         }
         
-        any(const any& other): _holder(other._holder) {}
+        any(const any& other): _holder(other._holder) {
 
-        any(any&& other)
-            : _holder(other._holder) { other._holder.reset(); }
+        }
+
+
+        any(any&& other) noexcept : _holder(std::move(other._holder)) {
+
+        }
+
+        template<typename ValueType>
+        any(ValueType&& value,
+            typename disable_if<std::is_same<any&, ValueType> >::type * =0,
+            typename disable_if<std::is_const<ValueType>>::type * =0
+            )
+                : _holder(std::make_shared<place_holder<ValueType>>(std::move(value))) {
+
+        }
 
         any(const std::initializer_list<any>& list)
             : _holder (std::make_shared<place_holder<array_t>>(list))
         {
+
         }
         
         any& operator=(const any& other) 
         {
-            _holder = other._holder;
+            any(other).swap(*this);
+
             return *this;
+        }
+        any& operator=(any&& other)
+        {
+            _holder = std::move(other._holder);
+            return *this;
+        }
+
+        any& operator=(const char *str)
+        {
+            return *this = std::string(str);
+        }
+
+        void swap(any& other) noexcept
+        {
+            other._holder.swap(_holder);
         }
         
-        template<typename T>
-        any& operator=(T&& val)
+        template<typename ValueType>
+        any& operator=(ValueType&& val)
         {
-            if(_holder == nullptr 
-                || _holder->type_name() != typeid(T).name()
-                || _holder.use_count() > 1) {
-                _holder = std::make_shared<place_holder<T>>();
-            }
-            std::dynamic_pointer_cast<place_holder<T>>(_holder)->value = std::move(val);
+            any(std::move(val)).swap(*this);
             return *this;
         }
+
 
         std::vector<std::string> all_keys() const noexcept
         {
@@ -114,10 +153,7 @@ namespace oyoung
             return {};
         }
 
-        any& operator=(const char *str) 
-        {        
-            return *this = std::string(str);
-        }
+
         
 
         int count() const
@@ -134,11 +170,11 @@ namespace oyoung
 
 
         
-        template<typename T>
-        T value(T&& def) const noexcept
+        template<typename ValueType>
+        ValueType value(ValueType&& def) const noexcept
         {
-            if(_holder && typeid(T).name() == _holder->type_name()) {
-                return std::dynamic_pointer_cast<place_holder<T>>(_holder)->value;
+            if(_holder && typeid(ValueType).name() == _holder->type_name()) {
+                return std::dynamic_pointer_cast<place_holder<ValueType>>(_holder)->value;
             } else {
                 return def;
             }
@@ -149,15 +185,18 @@ namespace oyoung
             if(_holder == nullptr || _holder->type_name() != typeid(array_t).name()) {
                 _holder = std::make_shared<place_holder<array_t>>();
             }
+
             std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value.push_back(value);
+
         }
 
         template <typename ...Args>
         void emplace_back(Args&& ...args)
         {
             if(_holder == nullptr || _holder->type_name() != typeid(array_t).name()) {
-                _holder = std::make_shared<place_holder<array_t> >();
+                _holder = std::make_shared<place_holder<array_t>>();
             }
+
             std::dynamic_pointer_cast<place_holder<array_t>>(_holder)->value.emplace_back(std::forward<Args>(args)...);
 
         }
@@ -361,6 +400,12 @@ namespace oyoung
                 it.array_iterator = begin ? arr.begin(): arr.end();
             }
 
+            const_iterator(const const_iterator& other): type(other.type), it{other.it} {}
+
+            const_iterator(const_iterator&& other): type(other.type), it{other.it} {
+                other.it = internal_iterator{};
+            }
+
             const std::string& key() const
             {
                 if(type == object) {
@@ -459,6 +504,8 @@ namespace oyoung
         {
             iterator(object_t & obj, bool begin = true): const_iterator(obj, begin) {}
             iterator(array_t & arr, bool begin = true): const_iterator(arr, begin) {}
+            iterator(const iterator& other): const_iterator(other) {}
+            iterator(iterator&& other): const_iterator(std::move(other)) {}
 
             any& operator *()
             {

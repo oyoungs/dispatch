@@ -1,30 +1,21 @@
 #include <oyoung/any.hpp>
 #include <iostream>
 
+
+
+
 int main(int argc, char **argv)
 {
 
-    oyoung::any any = oyoung::any::object_t { {"name", "oyoung"}, {"age", 27} };
+    oyoung::any list {1, 2, 3, 4, 5, 6};
 
-    std::string name = any["name"];
+    list.emplace_back(0);
 
-    std::cout << name << std::endl;
+    for(auto n: list) {
 
-    any.insert("gender", "Male");
-
-    for(auto it = any.begin(); it != any.end(); ++it) {
-        auto& value = it.value();
-
-        std::cout << it.key() << ": ";
-        if(value.is_string()) {
-            std::cout << oyoung::any_cast<std::string>(value);
-        } else if(value.is_number_integer()) {
-            std::cout << oyoung::any_cast<int>(value);
-        }
-        std::cout << std::endl;
+        int i = n;
+        std::cout << i << std::endl;
     }
-
-
 
     return 0;
 }
