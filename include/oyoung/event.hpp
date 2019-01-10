@@ -11,7 +11,6 @@
 
 /* all std includes */
 
-
 namespace oyoung {
 
     struct id_allocator
@@ -120,6 +119,7 @@ namespace oyoung {
                     _events_count ++;
                     return id;
                 }
+
                 return invalid_id;
             }
 
@@ -183,16 +183,16 @@ namespace oyoung {
 
         private:
             struct Domain {
-                any domain;
+                any domain {};
                 std::map<std::string, std::vector<listener_tuple>> _events;
-                int _events_count;
-                any _max_listeners;
-                any members;
-            } domain;
+                int _events_count {0};
+                any _max_listeners {};
+                any members {};
+            } domain {};
 
             std::map<std::string, std::vector<listener_tuple>> _events;
-            int _events_count;
-            any _max_listeners;
+            int _events_count {0};
+            any _max_listeners {};
         };
     }
 
