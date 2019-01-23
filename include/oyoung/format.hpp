@@ -95,8 +95,7 @@ namespace oyoung {
         template <typename Clock, typename Duration>
         static std::string time_format(const std::chrono::time_point<Clock, Duration>& time_point, const std::string& fmt)
         {
-            auto now = Clock::now();
-            auto time = Clock::to_time_t(now);
+            auto time = Clock::to_time_t(time_point);
             auto puttime  = std::put_time(std::localtime(&time), fmt.c_str());
             auto ostream = std::ostringstream {};
             return (ostream << puttime, ostream).str();
