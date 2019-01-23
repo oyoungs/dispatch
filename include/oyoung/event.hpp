@@ -84,7 +84,13 @@ namespace oyoung {
                     if (once) remove(event, id);
 
                     if(eptr) {
-                        std::rethrow_exception(eptr);
+                        try {
+                            std::rethrow_exception(eptr);
+                        } catch (const std::exception& e) {
+                            throw std::runtime_error(std::string("[") + event + "]" + e.what());
+                        } catch (...) {
+                            std::rethrow_exception(std::current_exception());
+                        }
                     }
 
                 }
@@ -349,9 +355,9 @@ namespace oyoung {
                     try {
                         func(ev_data);
                     } catch (const std::exception& e) {
-                        emit("exception", e.what());
+                        emit("exception","[" + name + "] " +  e.what());
                     } catch (...) {
-                        emit("exception", "unknown exception");
+                        emit("exception","[" + name + "] unknown exception");
                     }
                 }
 

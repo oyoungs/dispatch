@@ -211,7 +211,8 @@ namespace oyoung {
             parse_option_list _parse_options;
         };
 
-        options parse(int argc, const char *const *argv, const parse_options& opts)
+        template <typename T=void>
+        options parse(int argc, const char *const *argv, const parse_options& opts, T* = nullptr)
         {
             options result {};
             arguments args (argc, argv);
