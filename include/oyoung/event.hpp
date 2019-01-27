@@ -69,7 +69,10 @@ namespace oyoung {
 
 
             void emit(const std::string &event, const any &arguments = {}) {
-                for(auto& tuple: _events[event]) {
+                auto found = _events.find(event);
+                if(found == _events.end()) return;
+
+                for(auto& tuple: found->second) {
                     auto id = std::get<0>(tuple);
                     auto func = std::get<1>(tuple);
                     auto once = std::get<2>(tuple);
