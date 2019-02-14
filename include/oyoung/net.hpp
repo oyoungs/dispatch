@@ -41,7 +41,7 @@
 
 #endif
 
-
+#include <iostream>
 
 namespace oyoung {
 
@@ -73,7 +73,17 @@ public:
 
     }
 
-    const std::string& address() const
+    socket(socket&& other)
+            : _address(std::move(other._address))
+            , _port(std::move(other._port))
+            , _descriptor(std::move(other._descriptor)) {}
+
+    socket(const socket& other)
+            : _address(other._address)
+            , _port(other._port)
+            , _descriptor(other._descriptor) {}
+
+    std::string address() const
     {
         return _address;
     }
@@ -247,6 +257,9 @@ namespace tcp {
     {
 
         client(const std::string& address, Int32 port): socket(address, port) {}
+
+        client(client&& other): socket(std::move(other)) {}
+        client(const client& other): socket(other) {}
 
         result connect(int timeout = 0)
         {
@@ -640,7 +653,7 @@ namespace tcp {
                         if (client) {
                             start(client->descriptor(), _read_event);
                             _accepted_clients[client->descriptor()] = client;
-                            emit("accept", client);
+                            emit("accept", std::move(client));
                         }
                     } else {
                         auto client = _accepted_clients[fd];
@@ -652,23 +665,14 @@ namespace tcp {
                                 emit("data", std::make_tuple(client, bytes));
                             } else if (result.error() == socket_error::connection_closed) {
                                 client->set_descriptor(fd);
-                                emit("close", client);
+                                stop(fd);
+                                emit("close", std::move(client));
                             } else {
                                 emit("error", result.message());
                             }
                         }
                     }
 
-                });
-
-
-                on("close", [=](const any &argument) {
-                    auto client = any_cast<std::shared_ptr<default_client>>(argument);
-                    auto descriptor = client ? client->descriptor() : bad_descriptor;
-                    if (descriptor != bad_descriptor) {
-                        stop(descriptor);
-                        _accepted_clients.erase(descriptor);
-                    }
                 });
 
                 start(descriptor(), _read_event);
@@ -698,6 +702,7 @@ namespace tcp {
 
         void stop(int descriptor) {
             emit("stop", descriptor);
+            _accepted_clients.erase(descriptor);
         }
 
     private:

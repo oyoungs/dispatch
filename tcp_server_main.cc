@@ -6,10 +6,12 @@
 #include <ev++.h>
 
 using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
+using default_main_queue = oyoung::dispatch_main_queue<default_event_loop>;
 
 int main(int argc, char *argv[]) {
 
     default_event_loop loop {};
+    default_main_queue::set_dispatch_main_queue(std::make_shared<default_main_queue>(loop));
 
     oyoung::net::tcp::default_server server("0.0.0.0", 9090);
 
@@ -23,18 +25,23 @@ int main(int argc, char *argv[]) {
     server.on("stop", [=, &loop](const oyoung::any& arguments) {
         auto descriptor = oyoung::any_cast<int>(arguments);
         loop.stop(descriptor);
+        std::cout << "descriptor stopped: " <<  descriptor << std::endl;
     });
 
     server.on("accept", [=, &loop](const oyoung::any& arguments) {
-       loop.emit("accept", arguments);
+        loop.emit("accept", arguments);
     });
 
     server.on("data", [=, &loop](const oyoung::any& arguments) {
-       loop.emit("data", arguments);
+        loop.emit("data", arguments);
     });
 
     server.on("close", [=, &loop](const oyoung::any& arguments) {
-       loop.emit("close", arguments);
+        loop.emit("close", arguments);
+        std::cout << "loop emitted close" << std::endl;
+        oyoung::async(oyoung::dispatch_get_main_queue(), [] {
+            std::cout << "client closed" << std::endl;
+        });
     });
 
     loop.on("io", [=, &server](const oyoung::any& arguments) {

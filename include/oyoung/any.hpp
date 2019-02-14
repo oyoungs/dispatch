@@ -290,15 +290,15 @@ namespace oyoung
         {
             static_assert(not std::is_reference<T>::value,
                           "value() cannot be used with reference types");
-            static_assert(std::is_default_constructible<T>::value,
-                          "types must be DefaultConstructible when used with value()");
+            static_assert(std::is_copy_constructible<T>::value,
+                          "types must be CopyConstructible when used with value()");
 
             if(_holder && typeid(T).name() == _holder->type_name()) {
-                return std::dynamic_pointer_cast<place_holder<T>>(_holder)->value;
-            } else {
-                throw std::bad_cast();
+                auto holder = std::dynamic_pointer_cast<place_holder<T>>(_holder);
+                if(holder) return holder->value;
             }
-            
+
+            throw std::bad_cast();
         }
 
         template <typename T>

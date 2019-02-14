@@ -239,14 +239,35 @@ namespace oyoung {
             loop.on("dispatch_main_queue", [=](const any &argument) {
                 handle_dispatch_main_queue(argument);
             });
+
+            _destroy_guard += [=, &loop] {
+                loop.off("dispatch_main_queue");
+            };
         }
 
         virtual void emit(const std::string &name, const any &argument) {}
 
-        virtual ~dispatch_main_queue_base() {}
+        virtual ~dispatch_main_queue_base() {
+        }
 
     private:
 
+        struct guard {
+
+            guard() {}
+
+            guard&operator+=(const std::function<void()>& func) {
+                _destroyer = func;
+                return *this;
+            }
+
+            ~guard() {
+                if(_destroyer) _destroyer();
+            }
+
+        private:
+            std::function<void()> _destroyer;
+        } _destroy_guard;
 
         void handle_dispatch_main_queue(const any &argument) {
             try {
@@ -314,6 +335,7 @@ namespace oyoung {
         enum promise_status {
             ready, timeout, defered
         };
+
 
         base_promise(const promise_block<T> &block)
                 : _queue(std::make_shared<serial_dispatch_queue>("promise")) {

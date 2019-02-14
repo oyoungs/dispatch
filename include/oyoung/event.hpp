@@ -219,6 +219,7 @@ namespace oyoung {
         }
 
         virtual void on(const std::string &name, const std::function<void(const any &)> &listener) = 0;
+        virtual void off(const std::string& name) = 0;
 
         virtual void emit(const std::string &name, const any &argument = {}) = 0;
 
@@ -273,6 +274,10 @@ namespace oyoung {
 
         void on(const std::string &name, const std::function<void(const any &)> &listener) override {
             listeners[name].emplace_back(listener);
+        }
+
+        void off(const std::string& name) override  {
+            listeners[name].clear();
         }
 
         void start(int descriptor, int event) {
