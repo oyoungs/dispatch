@@ -46,6 +46,8 @@ namespace oyoung {
         void bind(reference_type reference,
                   const will_set_function& check = nullptr,
                   const did_set_function& changed = nullptr) {
+
+            _value.reset();
             _get = [&] () -> reference_type { return reference ;};
             _will_set = check;
             _set = [&] (const_referennce_type other) {
