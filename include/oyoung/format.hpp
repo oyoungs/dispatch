@@ -92,6 +92,26 @@ namespace oyoung {
             return *this;
         }
 
+        template <typename Iterator>
+        std::string join(Iterator begin, Iterator end)
+        {
+            auto last = end - 1;
+            auto joined = std::string {};
+
+            if(end <= begin) return joined;
+
+            joined.reserve(256);
+
+            for(auto it = begin; it != last; ++ it) {
+                joined += *it;
+                joined += _format_;
+            }
+
+            joined += *last;
+
+            return joined;
+        }
+
         template <typename Clock, typename Duration>
         static std::string time_format(const std::chrono::time_point<Clock, Duration>& time_point, const std::string& fmt)
         {
