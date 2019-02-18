@@ -6,6 +6,7 @@
 #define DISPATCH_FORMAT_HPP
 
 #include <string>
+#include <vector>
 #include <sstream>
 
 #include <chrono>
@@ -95,10 +96,10 @@ namespace oyoung {
         template <typename Iterator>
         std::string join(Iterator begin, Iterator end)
         {
-            auto last = end - 1;
+            auto last = std::prev(end);
             auto joined = std::string {};
 
-            if(end <= begin) return joined;
+            if(std::distance(begin, last) <= 0) return joined;
 
             joined.reserve(256);
 
@@ -110,6 +111,32 @@ namespace oyoung {
             joined += *last;
 
             return joined;
+        }
+
+        template <typename Container>
+        void split(const std::string& separator, Container& container) const {
+
+            auto start = std::string::size_type {0u};
+            auto fpos = _format_.find(separator, start);
+            while (fpos != _format_.npos) {
+                container.emplace_back(_format_.substr(start, fpos - start));
+                start = fpos + separator.size();
+                fpos = _format_.find(separator, start);
+            }
+            container.emplace_back(_format_.substr(start, fpos - start));
+        }
+
+        std::vector<std::string> split(const std::string& separator) const {
+            std::vector<std::string> container {};
+            split(separator, container);
+            return container;
+        }
+
+        template <typename Container>
+        Container split(const std::string& separator) const {
+            Container container{};
+            split(separator, container);
+            return container;
         }
 
         template <typename Clock, typename Duration>
