@@ -95,7 +95,7 @@ namespace oyoung
 
         template<typename ValueType>
         any(ValueType&& value,
-            typename disable_if<std::is_same<any&, ValueType> >::type * =0,
+            typename disable_if<std::is_same<typename std::remove_reference<ValueType>::type &, ValueType> >::type * =0,
             typename disable_if<std::is_const<ValueType>>::type * =0
             )
                 : _holder(std::make_shared<place_holder<ValueType>>(std::move(value))) {
@@ -135,13 +135,6 @@ namespace oyoung
         {
             other._holder.swap(_holder);
         }
-        
-        template<typename ValueType>
-        any& operator=(ValueType&& val)
-        {
-            any(std::move(val)).swap(*this);
-            return *this;
-        }
 
 
         std::vector<std::string> all_keys() const noexcept
@@ -177,7 +170,7 @@ namespace oyoung
 
         
         template<typename ValueType>
-        ValueType value(ValueType&& def) const noexcept
+        ValueType value(typename std::remove_reference<ValueType>::type && def) const noexcept
         {
             if(_holder && typeid(ValueType).name() == _holder->type_name()) {
                 return std::dynamic_pointer_cast<place_holder<ValueType>>(_holder)->value;
