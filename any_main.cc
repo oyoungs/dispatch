@@ -18,31 +18,56 @@ int main(int argc, char **argv)
     }
 
     /// use T&& ctor
-    oyoung::any value(2019);
+    oyoung::any value("Jack");
 
     /// use copy ctor
-    std::cout << "before copy, value: "  << oyoung::any_cast<int>(value) << std::endl;
+    std::cout << "---\nbefore copy, value: "  << oyoung::any_cast<std::string>(value) << std::endl;
     oyoung::any copied(value);
-    std::cout << "copied value: " << oyoung::any_cast<int>(copied) << std::endl;
-    std::cout << "after copied, value: "  << oyoung::any_cast<int>(value) << std::endl;
+    std::cout << "copied value: " << oyoung::any_cast<std::string>(copied) << std::endl;
+    std::cout << "after copied, value: "  << oyoung::any_cast<std::string>(value) << std::endl;
 
     /// use move ctor
-    std::cout << "before moved, copied is null: " << std::boolalpha << copied.is_null() << std::endl;
-    oyoung::any moved(std::move(copied));
-    std::cout << "moved: " << oyoung::any_cast<int>(moved) << std::endl;
-    std::cout << "after moved, copied is null: " << std::boolalpha << copied.is_null() << std::endl;
+    std::cout << "---\nbefore moved, value is null: " << std::boolalpha << value.is_null() << std::endl;
+    oyoung::any moved(std::move(value));
+    std::cout << "moved: " << oyoung::any_cast<std::string>(moved) << std::endl;
+    std::cout << "after moved, value is null: " << std::boolalpha << value.is_null() << std::endl;
 
 
-    std::string name {"oyoung"};
+    std::string name {"Mikeray"};
 
-    std::cout << "before copied, name: " << name << std::endl;
+    std::cout << "---\nbefore copy ctor called, name: " << name << std::endl;
     oyoung::any copied_name(name);
-    std::cout << "after copied, name: " << name << std::endl;
+    std::cout << "after copy ctor called, name: " << name << std::endl;
 
 
-    std::cout << "before moved, name: " << name << std::endl;
+    std::cout << "---\nbefore move ctor called, name: " << name << std::endl;
     oyoung::any moved_name(std::move(name));
-    std::cout << "after moved, name: " << name << std::endl;
+    std::cout << "after move ctor called, name: " << name << std::endl;
+
+
+    std::cout << "---\nbefore assign (const char *), value is null: " << value.is_null() << std::endl;
+    value = "Lucy";
+    std::cout << "after assign (const char *), value: " << oyoung::any_cast<std::string>(value) << std::endl;
+
+
+    std::cout << "---\nbefore assign (T&&) [T = int], value: " << oyoung::any_cast<std::string>(value) << std::endl;
+    value = 1000;
+    std::cout << "after assign (T&&) [T = int], value: " << oyoung::any_cast<int>(value) << std::endl;
+
+    name = "Naruto";
+
+    std::cout << "---\nbefore assign (const T&) [T = std::string], value: " << oyoung::any_cast<int >(value) << std::endl;
+    value = name;
+    std::cout << "after assign (const T&) [T = std::string], value: " << oyoung::any_cast<std::string>(value) << std::endl;
+
+    std::cout << "---\nbefore assign (nullptr), value is null: " << value.is_null() << std::endl;
+    value = nullptr;
+    std::cout << "after assign (nullptr), value is null: " << value.is_null() << std::endl;
+
+    std::cout << "---\nbefore assign (T&&) [T = std::string], value is null: " << value.is_null() <<", name: " << name << std::endl;
+    value = std::move(name);
+    std::cout << "after assign (T&&) [T = std::string], value: " << oyoung::any_cast<std::string>(value) <<", name: " << name << std::endl;
+
 
     return 0;
 }

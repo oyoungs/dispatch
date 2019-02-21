@@ -148,6 +148,11 @@ namespace oyoung
             return *this;
         }
 
+        any&operator=(decltype(nullptr)) {
+            reset();
+            return *this;
+        }
+
         any&operator=(const char* str) {
             if(_holder == nullptr || _holder->type_name() != typeid(std::string).name()) {
                 *this = any(str);
@@ -157,6 +162,9 @@ namespace oyoung
             return *this;
         }
 
+        void reset() noexcept  {
+            _holder.reset();
+        }
 
         void swap(any& other) noexcept
         {
