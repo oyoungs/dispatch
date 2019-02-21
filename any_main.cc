@@ -12,12 +12,12 @@ int main(int argc, char **argv)
     list.emplace_back(0);
 
     for(auto n: list) {
-
         int i = n;
-        std::cout << i << std::endl;
+        std::cout << i << " ";
     }
+    std::cout << std::endl;
 
-    /// use T&& ctor
+    /// use ctor(const char *)
     oyoung::any value("Jack");
 
     /// use copy ctor
