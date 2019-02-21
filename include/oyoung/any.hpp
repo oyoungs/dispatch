@@ -93,18 +93,17 @@ namespace oyoung
 
         }
 
-        template<typename ValueType>
-        any(ValueType&& value,
-            typename disable_if<std::is_same<typename std::remove_reference<ValueType>::type &, ValueType> >::type * =0,
-            typename disable_if<std::is_const<ValueType>>::type * =0
-            )
-                : _holder(std::make_shared<place_holder<ValueType>>(std::move(value))) {
+        template<typename T,
+                typename D1 = typename disable_if<std::is_same<typename std::remove_reference<T>::type &, T>>::type,
+                typename D2 = typename disable_if<std::is_const<T>>::type>
+        any(T&& value) : _holder(std::make_shared<place_holder<T>>(std::forward<T>(value))) {
 
         }
 
-        template<typename ValueType>
-        any(const ValueType& value )
-                : _holder(std::make_shared<place_holder<ValueType>>(value)) {
+
+        template<typename T>
+        any(const T& value )
+                : _holder(std::make_shared<place_holder<T>>(value)) {
 
         }
 
@@ -122,14 +121,42 @@ namespace oyoung
         }
         any& operator=(any&& other)
         {
-            _holder = std::move(other._holder);
+            any(std::move(other)).swap(*this);
             return *this;
         }
 
-        any& operator=(const char *str)
-        {
-            return *this = std::string(str);
+        template <typename T,
+                typename D1 = typename disable_if<std::is_same<typename std::remove_reference<T>::type &, T>>::type,
+                typename D2 = typename disable_if<std::is_const<T>>::type>
+        any&operator=(T&& value) {
+
+            if(_holder == nullptr || _holder->type_name() != typeid(typename std::remove_reference<T>::type).name()) {
+                *this = any(std::forward<T>(value));
+            } else {
+                std::dynamic_pointer_cast<place_holder<T>>(_holder)->value = std::forward<T>(value);
+            }
+            return *this;
         }
+
+        template <typename T>
+        any&operator=(const T& value) {
+            if(_holder == nullptr || _holder->type_name() != typeid(typename std::remove_reference<T>::type).name()) {
+                *this = any(value);
+            } else {
+                std::dynamic_pointer_cast<place_holder<T>>(_holder)->value = value;
+            }
+            return *this;
+        }
+
+        any&operator=(const char* str) {
+            if(_holder == nullptr || _holder->type_name() != typeid(std::string).name()) {
+                *this = any(str);
+            } else {
+                std::dynamic_pointer_cast<place_holder<std::string>>(_holder)->value = str;
+            }
+            return *this;
+        }
+
 
         void swap(any& other) noexcept
         {

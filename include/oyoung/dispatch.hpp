@@ -220,8 +220,7 @@ namespace oyoung {
     struct dispatch_main_queue_base {
         template<typename Fn, typename ...Args>
         void dispatch(Fn &&func, Args &&...args) {
-            std::function<void()> function = std::bind(std::move(func), std::forward<Args>(args)...);
-            emit("dispatch_main_queue", function);
+            emit("dispatch_main_queue", std::bind(std::move(func), std::forward<Args>(args)...));
         };
 
         static void set_dispatch_main_queue(std::shared_ptr<dispatch_main_queue_base> queue) {
