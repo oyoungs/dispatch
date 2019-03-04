@@ -2,8 +2,11 @@
 // Created by oyoung on 19-3-1.
 //
 
-#include <oyoung/integer.hpp>
+#include <oyoung/number.hpp>
 #include <iostream>
+#include <complex>
+
+using namespace oyoung::number;
 
 int main(int, char**)
 {
@@ -46,16 +49,31 @@ int main(int, char**)
     score *= 100;
     std::cout << "score *= 100, score: " << score << std::endl;
 
-    Float temp;
-    std::cout << "temp: " << temp << std::endl;
-
-
-    if(age) {
-        std::cout << "age != 0" << std::endl;
+    if(score < 120) {
+        std::cout << "score < 120" << std::endl;
     }
 
+    if(-100.0 < score) {
+        std::cout << "score > -100.0" << std::endl;
+    }
 
-    std::cout << std::chrono::duration_cast<std::chrono::seconds>(score.abs().hours()).count() << std::endl;
+    std::cout << &score << std::endl;
+
+    complex a;
+    complex b;
+
+    a = {5.0, 0.5};
+    b = {1.0, 0.1};
+
+    std::cout << "complex a value: " << a << std::endl;
+    std::cout << "complex a radius: " << a.radius() << std::endl;
+    std::cout << "complex a theta: " << a.theta() << std::endl;
+    std::cout << "complex b value: " << b << std::endl;
+    std::cout << "complex a+b value: " << a+b << std::endl;
+    std::cout << "complex a-b value: " << a-b << std::endl;
+    std::cout << "complex a*b value: " << a*b << std::endl;
+    std::cout << "complex a/b value: " << a/b << std::endl;
+    std::cout << "complex a conjugate value: " << a.conjugate() << std::endl;
 
     return 0;
 }

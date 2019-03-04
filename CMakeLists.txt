@@ -21,7 +21,7 @@ add_executable(gomain go_main.cc)
 add_executable(format format_main.cc)
 add_executable(emitter event_emitter_main.cc)
 add_executable(property property_main.cc)
-add_executable(interger_main interger_main.cc)
+add_executable(number number_main.cc)
 
 
 target_link_libraries(tcpserver pthread ev)
