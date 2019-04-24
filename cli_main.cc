@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 
     options.add("name", "--name", 0, "default");
     options.add("man", "--super-man", 'm', false);
-    options.add("threads", "--threads", 'j', 10);
+    options.add("threads", "--threads", 'j', 10u);
 
     try {
         auto result = oyoung::cli::parse(argc, argv, options);
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         std::cout << "Name: " << name << std::endl;
         bool man = result["man"];
         std::cout << "Man: " << man << std::endl;
-        oyoung::cli::options_integer thread = result["threads"];;
+        unsigned thread = result["threads"];;
         std::cout << "threads: " << thread << std::endl;
 
     } catch (const std::exception& e) {

@@ -187,7 +187,7 @@ namespace oyoung {
                 return _events_count;
             }
 
-            constexpr static int default_max_listeners{10};
+            constexpr static int default_max_listeners{50};
 
 
         private:

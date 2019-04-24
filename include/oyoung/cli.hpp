@@ -212,7 +212,7 @@ namespace oyoung {
         };
 
         template <typename T=void>
-        options parse(int argc, const char *const *argv, const parse_options& opts, T* = nullptr)
+        options parse(int argc,  char *const *argv, const parse_options& opts, T* = nullptr)
         {
             options result {};
             arguments args (argc, argv);
@@ -225,49 +225,64 @@ namespace oyoung {
 
 
                 if(default_v.is_number_integer()) {
-                    options_integer value {0};
+
                     if(default_v.type_name() == typeid(int).name()) {
-                        value = (options_integer)any_cast<int>(default_v);
+                        auto value = any_cast<int>(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(short).name()) {
-                        value = (options_integer)any_cast<short >(default_v);
+                        auto value = any_cast<short >(default_v);;
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(char).name()) {
-                        value = (options_integer)any_cast<char >(default_v);
+                        auto value = any_cast<char >(default_v);;
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(long).name()) {
-                        value = (options_integer)any_cast<long >(default_v);
+                        auto value = any_cast<long >(default_v);;
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(options_integer).name()) {
-                        value = any_cast<options_integer>(default_v);
+                        auto value = any_cast<options_integer>(default_v);;
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     }
 
-                    args.get(value, long_name, short_name, value);
-                    result[name] = value;
+
 
                 } else if(default_v.is_number_unsigned()) {
-                    options_unsigned value {0};
-
                     if(default_v.type_name() == typeid(unsigned).name()) {
-                        value = (options_unsigned)any_cast<unsigned >(default_v);
+                        auto value = any_cast<unsigned >(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(unsigned short).name()) {
-                        value = (options_unsigned)any_cast<unsigned short >(default_v);
+                        auto value = any_cast<unsigned short >(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(unsigned char).name()) {
-                        value = (options_unsigned)any_cast<unsigned char >(default_v);
+                        auto value = any_cast<unsigned char >(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(unsigned long).name()) {
-                        value = (options_unsigned)any_cast<unsigned long >(default_v);
+                        auto value = any_cast<unsigned long >(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(options_unsigned).name()) {
-                        value = any_cast<options_unsigned>(default_v);
+                        auto value = any_cast<options_unsigned>(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     }
-                    args.get(value, long_name, short_name, value);
-                    result[name] = value;
 
                 } else if(default_v.is_number_float()) {
-                    options_float value {0};
                     if(default_v.type_name() == typeid(float).name()) {
-                        value = (options_float) any_cast<float>(default_v);
+                        auto value = any_cast<float>(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     } else if(default_v.type_name() == typeid(options_float).name()) {
-                        value = any_cast<options_float >(default_v);
+                        auto value = any_cast<options_float>(default_v);
+                        args.get(value, long_name, short_name, value);
+                        result[name] = value;
                     }
-
-                    args.get(value, long_name, short_name, value);
-                    result[name] = value;
 
                 } else if(default_v.is_boolean()) {
                     bool value = default_v;
