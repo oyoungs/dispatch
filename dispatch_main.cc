@@ -15,20 +15,12 @@ int main(int argc, char **argv)
 
     oyoung::events::emitter emitter;
 
-    auto tick1 = emitter.on("tick1", [&loop, &emitter](const oyoung::any& arguments) {
-        std::cout << "on tick1" << std::endl;
-    });
-
-    auto tick2 = emitter.once("tick2", [](const oyoung::any& arguments) {
-        std::cout << "on tick2" << std::endl;
-    });
-
     oyoung::async(*queue, [=] {
         std::cout << "dispatch async calling" << std::endl;
         std::cout << "dispatch thread: " << std::this_thread::get_id() << std::endl;
 
         std::cout << "dispatch sync will call" << std::endl;
-        oyoung::sync(oyoung::dispatch_get_main_queue(), [=] {
+        auto n = oyoung::sync(oyoung::dispatch_get_main_queue(), [=] {
 
             std::cout << "dispatch sync calling" << std::endl;
             if(std::this_thread::is_main_thread()) {
@@ -36,9 +28,11 @@ int main(int argc, char **argv)
             } else {
                 std::cout << "dispatch thread(" << std::this_thread::get_id() <<") is not main thread" << std::endl;
             }
+
+            return std::this_thread::get_id();
         });
 
-        std::cout << "dispatch sync called" << std::endl;
+        std::cout << "dispatch sync called, result: " << n << std::endl;
         std::cout << "dispatch main queue called" << std::endl;
 
         if(std::this_thread::is_main_thread()) {
@@ -54,10 +48,7 @@ int main(int argc, char **argv)
         std::cout << "exception: " << what << std::endl;
     });
 
-    loop.set_interval([=,&emitter] {
-        emitter.emit("tick1");
-        emitter.emit("tick2");
-    }, std::chrono::seconds(1));
+
 
     return loop.exec();
 }

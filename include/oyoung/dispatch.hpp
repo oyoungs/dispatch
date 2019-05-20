@@ -120,17 +120,22 @@ namespace oyoung {
         queue.dispatch(func, std::forward<Args>(args)...);
     }
 
-    template<typename Q, typename Fn, typename ...Args>
-    void sync(Q &queue, Fn &&func, Args &&...args) {
-        auto task = std::make_shared<std::packaged_task<void()>>(std::move(func), std::forward<Args>(args)...);
-        auto future = task->get_future();
-        queue.dispatch([=] {
-            if (task) {
-                (*task)();
-            }
-        });
+    template<typename Q, typename Fn, typename ...Args, typename R = typename std::result_of<Fn&&(Args&&...)>::type>
+    R sync(Q &queue, Fn &&func, Args &&...args) {
 
-        future.wait();
+        std::function<R()> task = std::bind(std::move(func), std::forward<Args>(args)...);
+
+        if(task) {
+            auto promise = std::make_shared<std::promise<R>>();
+            auto future = promise->get_future();
+
+            queue.dispatch([=] {
+                promise->set_value(task());
+            });
+
+            return future.get();
+        }
+        return R{};
     }
 
 
@@ -220,7 +225,7 @@ namespace oyoung {
     struct dispatch_main_queue_base {
         template<typename Fn, typename ...Args>
         void dispatch(Fn &&func, Args &&...args) {
-            emit("dispatch_main_queue", std::bind(std::move(func), std::forward<Args>(args)...));
+            emit("dispatch_main_queue", std::function<void()> {std::bind(std::move(func), std::forward<Args>(args)...)});
         };
 
         static void set_dispatch_main_queue(std::shared_ptr<dispatch_main_queue_base> queue) {
