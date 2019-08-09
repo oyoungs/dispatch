@@ -31,7 +31,7 @@ namespace oyoung {
         }
 
         value_type value() const {
-            return _value ? *_value : _get();
+            return _computed ? _computed(): _value ? *_value : _get();
         }
         reference_type ref() {
             return _value ? *_value : _get();
@@ -42,6 +42,27 @@ namespace oyoung {
 
 
         property() {}
+
+        property(std::function<value_type()> computed)
+                : _computed(std::move(computed)) {
+            _get = [=] () -> reference_type {
+                throw std::runtime_error("computed property contains no ref get function");
+            };
+            _will_set = [=] (const_referennce_type other) -> bool {
+                throw std::runtime_error("computed property contains no set function");
+            };
+        }
+
+        void computed(std::function<value_type()> computed) {
+            _computed = std::move(computed);
+            _get = [=] () -> reference_type {
+                throw std::runtime_error("computed property contains no ref get function");
+            };
+            _will_set = [=] (const_referennce_type other) -> bool {
+                throw std::runtime_error("computed property contains no set function");
+            };
+
+        }
 
         void bind(reference_type reference,
                   const will_set_function& check = nullptr,
@@ -96,7 +117,7 @@ namespace oyoung {
         }
 
         operator value_type() const {
-            return _get();
+            return  _computed ? _computed(): _get ? _get() : value_type{};
         }
 
 
@@ -115,6 +136,7 @@ namespace oyoung {
         did_set_function _did_set;
 
     private:
+        std::function<value_type()> _computed{};
         std::shared_ptr<value_type> _value;
     };
 
@@ -128,7 +150,7 @@ namespace oyoung {
 
     template <typename OStream, typename T>
     OStream& operator<<(OStream& out, const property<T>& prop) {
-        out << prop.ref();
+        out << prop.value();
         return out;
     };
 

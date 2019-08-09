@@ -11,6 +11,7 @@ public:
     oyoung::property<int> age{1};
     oyoung::property<std::string> gender{"Female"};
     oyoung::property<std::string> name {};
+    oyoung::property<int> nextAge{};
     Person() {
         age.willSet([=] (int newVal) {
             return newVal > age;
@@ -19,6 +20,10 @@ public:
             std::cout << "Age changed: ( current: " << val << ", old: " << old << ")" << std::endl;
         });
         name.bind(_name);
+
+        nextAge.computed([=] {
+            return age + 1;
+        });
     }
 
     std::string& internal_name() { return _name; }
@@ -49,6 +54,17 @@ int main(int, char**)
     person.age = 22;
     std::cout << person.internal_name() << ", gender: " << person.gender << ", age: " << person.age << std::endl;
 
+    std::cout << person.nextAge << std::endl;
+
+    int next = person.nextAge;
+
+    std::cout << next << std::endl;
+
+    try {
+        person.nextAge = 100;
+    } catch (const std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
 
     return 0;
 }
