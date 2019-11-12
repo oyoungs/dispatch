@@ -23,5 +23,11 @@ int main(int, char**)
 
     std::cout << oyoung::format("Now: %1").arg(std::chrono::system_clock::now(), "%Y-%m-%d %H:%M:%S").to_string() << std::endl;
 
+    std::cout << "'" << oyoung::strip("\n\t\r123456789\t\r\n") << "'" << std::endl;
+
+    std::cout << "'" << oyoung::lstrip("0000123456789", "0") << "'" << std::endl;
+
+    std::cout << "'" << oyoung::rstrip("123456789****", "*") << "'" << std::endl;
+
     return 0;
 }
