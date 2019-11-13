@@ -188,20 +188,22 @@ namespace oyoung {
 
     inline formatter format(const std::string& fmt) { return  formatter(fmt); }
 
-    inline std::string substring(const std::string& src, std::string::size_type begin, std::string::size_type end) {
-        return src.substr(begin, end - begin);
+    inline std::string substring(const std::string& src, std::string::size_type begin, std::string::size_type end = std::string::npos) {
+        return src.substr(begin == std::string::npos ? 0: begin, end - begin);
     }
 
     inline std::string strip(const std::string& src, const std::string& chars = " \r\n\t") {
-        return substring(src, src.find_first_not_of(chars), src.find_last_not_of(chars) + 1);
+        auto tail = src.find_last_not_of(chars);
+        return substring(src, src.find_first_not_of(chars), tail == src.npos ? tail: tail + 1);
     }
 
     inline std::string lstrip(const std::string& src, const std::string& chars = " \r\n\t") {
-        return src.substr(src.find_first_not_of(chars));
+        return substring(src, src.find_first_not_of(chars));
     }
 
     inline std::string rstrip(const std::string& src, const std::string& chars = " \r\n\t") {
-        return src.substr(0, src.find_last_not_of(chars) + 1);
+        auto tail = src.find_last_not_of(chars);
+        return substring(src, 0, tail == src.npos ? tail: tail + 1);
     }
 }
 
