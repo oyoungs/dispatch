@@ -24,6 +24,7 @@ add_executable(property property_main.cc)
 add_executable(number number_main.cc)
 add_executable(defer defer_main.cc)
 add_executable(locker locker_main.cc)
+add_executable(range range_main.cc)
 
 target_link_libraries(tcpserver pthread ev)
 target_link_libraries(tcpclient pthread)
