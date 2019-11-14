@@ -5,7 +5,7 @@ Dispatch Tool for Modern C++
 
 ```bash
 ~$ cmake -Bbuild -H.
-~$ cmake --build build
+~$ cmake --build build --target install
 ```
 
 # Usage
