@@ -515,12 +515,16 @@ int main(int , char **) {
     std::cout << std::endl;
 
     repeat(5) [](int i) {
-        std::cout << "repeat " << i << " time" << std::endl;
+        std::cout << "repeat(i) " << i << " time" << std::endl;
     };
 
     int times = 0;
     repeat(3) [&] {
         std::cout << "repeat " << times++ << std::endl;
+    };
+
+    oyoung::Repeater(6) << [](int i) {
+        std::cout << "oyoung::Repeater: " << i << std::endl;
     };
 
     return 0;
