@@ -516,6 +516,15 @@ int main(int , char **) {
     }
     std::cout << std::endl;
 
+    repeat(5) [](int i) {
+        std::cout << "repeat " << i << " time" << std::endl;
+    };
+
+    int times = 0;
+    repeat(3) [&] {
+        std::cout << "repeat " << times++ << std::endl;
+    };
+
     return 0;
 }
 ```

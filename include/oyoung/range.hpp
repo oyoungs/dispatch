@@ -5,7 +5,7 @@
 #ifndef DISPATCH_RANGE_HPP
 #define DISPATCH_RANGE_HPP
 
-#include <bits/move.h>
+#include <functional>
 
 namespace oyoung {
 
@@ -103,6 +103,38 @@ namespace oyoung {
         return Range<T>(begin, end, step);
     }
 
+    struct Repeater {
+
+        explicit  Repeater(int times)
+        : m_times(times) {
+
+        }
+
+        Repeater&operator<<(const std::function<void()>& func) {
+
+            if(func) {
+                for (auto i: range(m_times)) {
+                    func();
+                }
+            }
+            return *this;
+        }
+
+        Repeater&operator<<(const std::function<void(int)>& func) {
+
+            if(func) {
+                for (auto i: range(m_times)) {
+                    func(i);
+                }
+            }
+            return *this;
+        }
+
+    private:
+        int m_times;
+    };
 }
+
+#define repeat(times) oyoung::Repeater(times) <<
 
 #endif //DISPATCH_RANGE_HPP
