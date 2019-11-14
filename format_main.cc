@@ -29,5 +29,7 @@ int main(int, char**)
 
     std::cout << "'" << oyoung::rstrip("123456789****", "*") << "'" << std::endl;
 
+    std::cout << "'" << oyoung::strip("\r\n\t") << "'" << std::endl;
+
     return 0;
 }

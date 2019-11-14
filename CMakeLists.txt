@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pthread")
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -23,6 +23,7 @@ add_executable(emitter event_emitter_main.cc)
 add_executable(property property_main.cc)
 add_executable(number number_main.cc)
 add_executable(defer defer_main.cc)
+add_executable(locker locker_main.cc)
 
 target_link_libraries(tcpserver pthread ev)
 target_link_libraries(tcpclient pthread)
