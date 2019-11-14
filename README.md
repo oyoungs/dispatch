@@ -4,10 +4,8 @@ Dispatch Tool for Modern C++
 # Install
 
 ```bash
-user@hostname: ~workdir$ mkdir -p build
-user@hostname: ~workdir$ cd build
-user@hostname: ~workdir$ cmake ..
-user@hostname: ~workdir$ make install
+~$ cmake -Bbuild -H.
+~$ cmake --build build
 ```
 
 # Usage
