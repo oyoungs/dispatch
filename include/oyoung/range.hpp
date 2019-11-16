@@ -43,7 +43,7 @@ namespace oyoung {
             const_iterator& operator++() {
                 m_index += m_step;
                 if(m_index > m_end) {
-                    m_index == m_end;
+                    m_index = m_end;
                 }
                 return *this;
             }
@@ -52,7 +52,7 @@ namespace oyoung {
                 const_iterator r(*this);
                 m_index += m_step;
                 if(m_index > m_end) {
-                    m_index == m_end;
+                    m_index = m_end;
                 }
                 return r;
             }

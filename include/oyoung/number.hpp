@@ -52,6 +52,17 @@ namespace oyoung {
         struct is_supported_package<std::uint64_t> {
             constexpr static bool value = true;
         };
+
+	template<>
+	struct is_supported_package<long> {
+	    constexpr static bool value = true;
+	};
+
+	template<>
+	struct is_supported_package<unsigned long> {
+	    constexpr static bool value = true;
+	};
+
         template<>
         struct is_supported_package<float> {
             constexpr static bool value = true;
@@ -113,7 +124,7 @@ namespace oyoung {
             }
 
             template<typename U>
-            operator U() const {
+            explicit operator U() const {
                 return static_cast<U>(_raw_value);
             }
 
@@ -304,6 +315,7 @@ namespace oyoung {
             Float() : type_package() {}
 
             Float(float v) : type_package(v) {}
+            Float(const type_package<float>& v) : type_package(v) {}
 
             Float &operator++() = delete;
 
@@ -319,6 +331,8 @@ namespace oyoung {
             Double() : type_package() {}
 
             Double(double v) : type_package(v) {}
+
+            Double(const type_package<double>& n): type_package(n) {}
 
             Double &operator++() = delete;
 
@@ -382,7 +396,8 @@ namespace oyoung {
 
         template<typename OStream, typename T>
         OStream &operator<<(OStream &os, const type_package<T> &package) {
-            return os << static_cast<T>(package);
+            os << static_cast<T>(package);
+	    return os;
         };
 
 

@@ -1,5 +1,5 @@
-project(dispatch)
 cmake_minimum_required(VERSION 2.8)
+project(dispatch)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
@@ -9,8 +9,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pthread")
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
-add_executable(tcpserver tcp_server_main.cc)
-add_executable(tcpclient tcp_client_main.cc)
 
 add_executable(any any_main.cc)
 
@@ -26,9 +24,11 @@ add_executable(defer defer_main.cc)
 add_executable(locker locker_main.cc)
 add_executable(range range_main.cc)
 
-target_link_libraries(tcpserver pthread ev)
+#add_executable(tcpserver tcp_server_main.cc)
+add_executable(tcpclient tcp_client_main.cc)
+#target_link_libraries(tcpserver pthread ev)
 target_link_libraries(tcpclient pthread)
-target_link_libraries(dispatch pthread ev)
+#target_link_libraries(dispatch pthread ev)
 target_link_libraries(gomain pthread)
 #target_link_libraries(cli pthread spdlog)
 

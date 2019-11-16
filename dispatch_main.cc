@@ -1,17 +1,12 @@
 #include <oyoung/event.hpp>
-#include <ev++.h>
 #include <iostream>
 
-using default_event_loop = oyoung::event_loop<ev::default_loop, ev::io, ev::async, ev::timer>;
-using dispatch_main_queue_default = oyoung::dispatch_main_queue<default_event_loop >;
 
 int main(int argc, char **argv)
 {
 
-    auto loop = default_event_loop {};
     auto queue = oyoung::dispatch_queue_create("name");
 
-    dispatch_main_queue_default::set_dispatch_main_queue(std::make_shared<dispatch_main_queue_default >(loop));
 
     oyoung::events::emitter emitter;
 
@@ -43,12 +38,6 @@ int main(int argc, char **argv)
 
     });
 
-    loop.on("exception", [=](const oyoung::any& argument) {
-        auto what = oyoung::any_cast<std::string>(argument);
-        std::cout << "exception: " << what << std::endl;
-    });
 
-
-
-    return loop.exec();
+    return 0;
 }

@@ -10,6 +10,7 @@
 #include <oyoung/dispatch.hpp>
 
 /* all std includes */
+#include <vector>
 
 namespace oyoung {
 
@@ -26,7 +27,8 @@ namespace oyoung {
                 }
             }
 
-            _allocated.emplace_back(false);
+//            _allocated.emplace_back(false);
+            _allocated.push_back(false);
 
             return _allocated.size() - 1;
         }
