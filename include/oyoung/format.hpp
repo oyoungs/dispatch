@@ -154,8 +154,8 @@ namespace oyoung {
 
     private:
 
-        int current_place_holder() const {
-            int holder {-1};
+        long current_place_holder() const {
+            long holder {-1};
             char *pos = nullptr;
             auto begin = _format_.c_str();
             auto end =  begin + _format_.size();
