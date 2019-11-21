@@ -77,15 +77,12 @@ chmod 775 postrm
 EOF
 ) > postrm
 
-mkdir -p ${route}/../build
-cd ${route}/../build
+cd ${route}/..
 
-cmake -DCMAKE_INSTALL_PREFIX=${project_install_path}  ..
-
-make install
+cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=${project_install_path} 
+cmake --build build --target install
 
 ### make package
-cd ${route}/..
 
 dpkg -b ${working_dir} dispatch_${target_version}_amd64.deb || exit 7
 echo "pack dispatch into deb finished."

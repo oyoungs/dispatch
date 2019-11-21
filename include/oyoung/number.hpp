@@ -53,16 +53,6 @@ namespace oyoung {
             constexpr static bool value = true;
         };
 
-	template<>
-	struct is_supported_package<long> {
-	    constexpr static bool value = true;
-	};
-
-	template<>
-	struct is_supported_package<unsigned long> {
-	    constexpr static bool value = true;
-	};
-
         template<>
         struct is_supported_package<float> {
             constexpr static bool value = true;
