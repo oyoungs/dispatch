@@ -21,35 +21,43 @@ namespace oyoung {
         };
 
         template<>
-        struct is_supported_package<std::int8_t> {
+        struct is_supported_package<char> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::uint8_t> {
+        struct is_supported_package<unsigned char> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::int16_t> {
+        struct is_supported_package<short> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::uint16_t> {
+        struct is_supported_package<unsigned  short> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::int32_t> {
+        struct is_supported_package<int> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::uint32_t> {
+        struct is_supported_package<unsigned  int> {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::int64_t> {
+        struct is_supported_package<long > {
             constexpr static bool value = true;
         };
         template<>
-        struct is_supported_package<std::uint64_t> {
+        struct is_supported_package<unsigned long> {
+            constexpr static bool value = true;
+        };
+        template<>
+        struct is_supported_package<long long> {
+            constexpr static bool value = true;
+        };
+        template<>
+        struct is_supported_package<unsigned long long> {
             constexpr static bool value = true;
         };
 
