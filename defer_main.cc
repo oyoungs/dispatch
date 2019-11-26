@@ -53,4 +53,6 @@ int  main(int, char**) {
 
     Test test2(2);
 
+    defer_pop();
+
 }

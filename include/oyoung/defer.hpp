@@ -21,6 +21,10 @@ namespace oyoung {
                 m_defers.pop_back();
             }
         }
+
+        void pop() {
+            m_defers.pop_back();
+        }
     private:
         std::vector<std::function<void()>> m_defers;
     };
@@ -30,5 +34,6 @@ namespace oyoung {
 
 #define USE_DEFER oyoung::Defer __defer__
 #define defer __defer__ +=
+#define defer_pop() __defer__.pop()
 
 #endif //DISPATCH_DEFER_HPP
