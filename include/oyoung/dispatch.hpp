@@ -147,8 +147,7 @@ namespace oyoung {
             typename Fn,
             typename ...Args,
             typename R = typename std::enable_if<
-                    std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value,
-                    bool>
+                    std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value>
             ::type>
     void sync(Q &queue, Fn &&func, Args &&...args) {
 
