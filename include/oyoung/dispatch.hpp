@@ -123,11 +123,13 @@ namespace oyoung {
     template<typename Q,
             typename Fn,
             typename ...Args,
-            typename R = typename std::enable_if<
+            typename std::enable_if<
                     !std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value,
                     typename std::result_of<Fn&&(Args&&...)>::type>
-            ::type>
-    R sync(Q &queue, Fn &&func, Args &&...args) {
+            ::type* = nullptr>
+    typename std::result_of<Fn&&(Args&&...)>::type sync(Q &queue, Fn &&func, Args &&...args) {
+
+        using R = typename std::result_of<Fn&&(Args&&...)>::type;
 
         std::packaged_task<R()> task(std::move(func), std::forward<Args>(args)...);
 
@@ -146,9 +148,9 @@ namespace oyoung {
     template<typename Q,
             typename Fn,
             typename ...Args,
-            typename R = typename std::enable_if<
+            typename std::enable_if<
                     std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value>
-            ::type>
+            ::type* = nullptr>
     void sync(Q &queue, Fn &&func, Args &&...args) {
 
         std::packaged_task<void()> task(std::move(func), std::forward<Args>(args)...);
