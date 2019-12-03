@@ -123,14 +123,13 @@ namespace oyoung {
     template<typename Q, typename Fn, typename ...Args, typename R = typename std::result_of<Fn&&(Args&&...)>::type>
     R sync(Q &queue, Fn &&func, Args &&...args) {
 
-        std::function<R()> task = std::bind(std::move(func), std::forward<Args>(args)...);
+        std::packaged_task<R()> task(std::move(func), std::forward<Args>(args)...);
 
-        if(task) {
-            auto promise = std::make_shared<std::promise<R>>();
-            auto future = promise->get_future();
+        if(task.valid()) {
+            auto future = task.get_future();
 
-            queue.dispatch([=] {
-                promise->set_value(task());
+            queue.dispatch([&] {
+                task();
             });
 
             return future.get();
