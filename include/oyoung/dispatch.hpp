@@ -120,7 +120,13 @@ namespace oyoung {
         queue.dispatch(func, std::forward<Args>(args)...);
     }
 
-    template<typename Q, typename Fn, typename ...Args, typename R = typename std::result_of<Fn&&(Args&&...)>::type>
+    template<typename Q,
+            typename Fn,
+            typename ...Args,
+            typename R = typename std::enable_if<
+                    !std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value,
+                    typename std::result_of<Fn&&(Args&&...)>::type>
+            ::type>
     R sync(Q &queue, Fn &&func, Args &&...args) {
 
         std::packaged_task<R()> task(std::move(func), std::forward<Args>(args)...);
@@ -135,6 +141,28 @@ namespace oyoung {
             return future.get();
         }
         return R{};
+    }
+
+    template<typename Q,
+            typename Fn,
+            typename ...Args,
+            typename R = typename std::enable_if<
+                    std::is_same<void, typename std::result_of<Fn&&(Args&&...)>::type>::value,
+                    bool>
+            ::type>
+    void sync(Q &queue, Fn &&func, Args &&...args) {
+
+        std::packaged_task<void()> task(std::move(func), std::forward<Args>(args)...);
+
+        if(task.valid()) {
+            auto future = task.get_future();
+
+            queue.dispatch([&] {
+                task();
+            });
+
+            future.wait();
+        }
     }
 
 
