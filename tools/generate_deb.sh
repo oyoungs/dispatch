@@ -3,6 +3,7 @@ set -e
 script=$(readlink -f "$0")
 route=$(dirname "$script")
 
+arch=${ARCH:-amd64}
 pkg_name=dispatch
 target_version=$1
 target_install_prefix=$2
@@ -38,7 +39,7 @@ Section: x11
 Priority: optional
 Depends:
 Suggests:
-Architecture: amd64
+Architecture: ${arch}
 Maintainer: oyoung
 CopyRight: commercial Provider: oyoung.
 Description: Modern C++ Dispatch Tool
@@ -84,7 +85,7 @@ cmake --build build --target install
 
 ### make package
 
-dpkg -b ${working_dir} dispatch_${target_version}_amd64.deb || exit 7
+dpkg -b ${working_dir} ${pkg_name}_${target_version}_${arch}.deb || exit 7
 echo "pack dispatch into deb finished."
 
 rm -rf ${route}/../${working_dir}
