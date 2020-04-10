@@ -460,11 +460,19 @@ namespace oyoung {
                 return complex(real, image);
             }
 
+            complex operator*(const Double& number) const {
+                return complex(_real * number, _imag * number);
+            }
+
             complex operator/(const complex &other) const {
                 auto de = other._real.square() + other._imag.square();
                 auto real = _real * other._real + _imag * other._imag;
                 auto image = _imag * other._real - _real * other._imag;
                 return complex(real / de, image / de);
+            }
+
+            complex operator/(const Double& number) const {
+                return complex(_real / number, _imag / number);
             }
 
             complex conjugate() const {
@@ -493,6 +501,32 @@ namespace oyoung {
                     .arg(image.abs().ref()).to_string();
         }
 
+        inline complex operator""_i(long double imag) {
+            return complex(0, imag);
+        }
+
+        inline complex operator""_i(unsigned long long imag) {
+            return complex(0, imag);
+        }
+
+        template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
+        complex operator+(const T& left, const complex& right) {
+            return complex(left + right.real(), right.imag());
+        }
+
+        template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
+        complex operator-(const T& left, const complex& right) {
+            return complex(left - right.real(), right.imag());
+        }
+
+        template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
+        complex operator*(const T& left, const complex& right) {
+            return complex(left * right.real(), left * right.imag());
+        }
+        template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
+        complex operator/(const T& left, const complex& right) {
+            return left * right.conjugate() / (right * right.conjugate());
+        }
     }
 }
 

@@ -64,11 +64,13 @@ int main(int, char**)
 
     a = {5.0, 0.5};
     b = {1.0, 0.1};
+    auto c = 1 - 0.5_i;
 
     std::cout << "complex a value: " << a << std::endl;
+    std::cout << "complex b value: " << b << std::endl;
+    std::cout << "complex c value: " << c << std::endl;
     std::cout << "complex a radius: " << a.radius() << std::endl;
     std::cout << "complex a theta: " << a.theta() << std::endl;
-    std::cout << "complex b value: " << b << std::endl;
     std::cout << "complex a+b value: " << a+b << std::endl;
     std::cout << "complex a-b value: " << a-b << std::endl;
     std::cout << "complex a*b value: " << a*b << std::endl;
