@@ -282,14 +282,14 @@ namespace oyoung {
         };
 
         using Int8 = type_package<std::int8_t>;
-        using Int16 = type_package<std::int8_t>;
-        using Int32 = type_package<std::int8_t>;
-        using Int64 = type_package<std::int8_t>;
+        using Int16 = type_package<std::int16_t>;
+        using Int32 = type_package<std::int32_t>;
+        using Int64 = type_package<std::int64_t>;
 
         using UInt8 = type_package<std::uint8_t>;
-        using UInt16 = type_package<std::uint8_t>;
-        using UInt32 = type_package<std::uint8_t>;
-        using UInt64 = type_package<std::uint8_t>;
+        using UInt16 = type_package<std::uint16_t>;
+        using UInt32 = type_package<std::uint32_t>;
+        using UInt64 = type_package<std::uint64_t>;
 
 
 
@@ -395,7 +395,7 @@ namespace oyoung {
         template<typename OStream, typename T>
         OStream &operator<<(OStream &os, const type_package<T> &package) {
             os << static_cast<T>(package);
-	    return os;
+	        return os;
         };
 
 
