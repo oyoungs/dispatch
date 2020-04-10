@@ -6,6 +6,7 @@
 #define DISPATCH_RANGE_HPP
 
 #include <functional>
+#include <iostream>
 
 namespace oyoung {
 
@@ -42,7 +43,11 @@ namespace oyoung {
 
             const_iterator& operator++() {
                 m_index += m_step;
-                if(m_index > m_end) {
+                if(0 < m_step and m_end < m_index) {
+                    m_index = m_end;
+                }
+
+                if(m_step < 0 and m_index < m_end) {
                     m_index = m_end;
                 }
                 return *this;
@@ -51,7 +56,11 @@ namespace oyoung {
             const_iterator operator++(int) {
                 const_iterator r(*this);
                 m_index += m_step;
-                if(m_index > m_end) {
+                if(0 < m_step and m_index > m_end) {
+                    m_index = m_end;
+                }
+
+                if(m_step < 0 and m_index < m_end) {
                     m_index = m_end;
                 }
                 return r;
