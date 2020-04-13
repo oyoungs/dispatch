@@ -184,19 +184,24 @@ namespace oyoung {
 
     template<std::size_t N>
     struct dispatch_queue : public base_dispatch_queue {
+        static constexpr std::size_t MAX_THREAD_COUNT = N;
         dispatch_queue(const std::string &name) : base_dispatch_queue(name) {
             running = true;
-            for (auto i = 0ul; i < N; ++i) {
-                _internal_thread[i] = std::thread([=] {
-                    dispatch_on_new_thread();
-                });
-            }
         }
 
         template<typename Fn, typename ...Args>
         void dispatch(Fn &&func, Args &&...args) {
             std::unique_lock<std::mutex> lock(_queue_mutex);
             _task_queue.push(std::bind(std::move(func), std::forward<Args>(args)...));
+            
+            /// if no idle thread and thread count less than MAX_THREAD_COUNT
+            if (_idle_thread_count == 0 and _thread_count < MAX_THREAD_COUNT) {                
+                _internal_thread[_thread_count++] = std::thread([=] {
+                    _idle_thread_count++;
+                    dispatch_on_new_thread();
+                });
+            }
+
             _queue_cv_runnable.notify_all();
         }
 
@@ -229,7 +234,9 @@ namespace oyoung {
                 }
 
                 if (func) {
+                    _idle_thread_count--;
                     func();
+                    _idle_thread_count++;
                 }
 
 
@@ -246,8 +253,10 @@ namespace oyoung {
         std::mutex _queue_mutex;
         std::condition_variable _queue_cv_runnable;
         std::condition_variable _queue_cv_empty;
+        std::size_t _thread_count {0};
+        std::atomic_size_t _idle_thread_count{0};
         std::thread _internal_thread[N];
-        std::queue<std::function<void()>> _task_queue;
+        std::queue<std::function<void()> > _task_queue;
     };
 
     struct dispatch_main_queue_base {
