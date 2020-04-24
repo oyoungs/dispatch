@@ -509,6 +509,14 @@ namespace oyoung {
             return complex(0, imag);
         }
 
+        inline std::chrono::hours operator"" _h(unsigned long long hours) {
+            return std::chrono::hours(static_cast<long>(hours));
+        }
+
+        inline std::chrono::minutes operator"" _min(unsigned long long minutes) {
+            return std::chrono::minutes(static_cast<long>(minutes));
+        }
+        
         inline std::chrono::seconds operator"" _s(unsigned long long seconds) {
             return std::chrono::seconds(seconds);
         }
@@ -517,15 +525,14 @@ namespace oyoung {
             return std::chrono::milliseconds(static_cast<long>(milliseconds));
         }
 
+        inline std::chrono::microseconds operator"" _us(unsigned long long microseconds) {
+            return std::chrono::microseconds(static_cast<long>(microseconds));
+        }
+
         inline std::chrono::nanoseconds operator"" _ns(unsigned long long nanoseconds) {
             return std::chrono::nanoseconds(static_cast<long>(nanoseconds));
         }
-        inline std::chrono::minutes operator"" _min(unsigned long long minutes) {
-            return std::chrono::minutes(static_cast<long>(minutes));
-        }
-        inline std::chrono::hours operator"" _h(unsigned long long hours) {
-            return std::chrono::hours(static_cast<long>(hours));
-        }
+
         
 
         template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
