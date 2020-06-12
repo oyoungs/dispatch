@@ -23,6 +23,7 @@ add_executable(number number_main.cc)
 add_executable(defer defer_main.cc)
 add_executable(locker locker_main.cc)
 add_executable(range range_main.cc)
+add_executable(string_view string_view_main.cc)
 
 #add_executable(tcpserver tcp_server_main.cc)
 add_executable(tcpclient tcp_client_main.cc)
