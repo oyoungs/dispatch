@@ -8,9 +8,11 @@
 #include <complex>
 
 using namespace oyoung::number;
+using namespace oyoung::number::literals;
 
 int main(int, char**)
 {
+
 
     Int age(100);
     Double score(10);

@@ -1,15 +1,23 @@
 
 #include <string>
 
+#if __cplusplus < 201703UL
+
+#include <stdexcept>
+#include <cstring>
+
+#endif
+
 namespace oyoung {
 
 #if __cplusplus < 201703UL
 
+
 template<typename CharT>
 struct basic_string_view {
-    
-    using size_type = std::string::size_type;
+
     using string_type = std::basic_string<CharT>;
+    using size_type = typename string_type::size_type;
     using const_pointer = const CharT*;
     using const_reference = const CharT&;
     using const_iterator = const_pointer;
