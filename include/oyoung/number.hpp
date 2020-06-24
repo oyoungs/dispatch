@@ -193,10 +193,10 @@ namespace oyoung {
                 return type_package(std::sqrt(_raw_value));
             }
 
-
-            const T *operator&() const {
-                return &_raw_value;
-            }
+//
+//            const T *operator&() const {
+//                return &_raw_value;
+//            }
 
             type_package &operator++() {
                 ++_raw_value;
