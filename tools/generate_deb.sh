@@ -3,7 +3,14 @@ set -e
 script=$(readlink -f "$0")
 route=$(dirname "$script")
 
-arch=${ARCH:-amd64}
+arch=`arch || echo 'amd64'`
+echo -e "Current arch: ${arch}"
+if [ "x86_64" == "${arch}" ]; then
+arch=amd64
+elif [ "aarch64" == "${arch}" ]; then
+arch=arm64
+fi
+
 pkg_name=dispatch
 target_version=$1
 target_install_prefix=$2
@@ -80,8 +87,8 @@ EOF
 
 cd ${route}/..
 
-cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=${project_install_path} 
-cmake --build build --target install
+cmake -Bbuild.${arch} -H. -DCMAKE_INSTALL_PREFIX=${project_install_path} 
+cmake --build build.${arch} --target install
 
 ### make package
 

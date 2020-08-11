@@ -446,35 +446,6 @@ namespace oyoung {
                 _imag.swap(other._imag);
             }
 
-            complex operator+(const complex &other) const {
-                return complex(_real + other._real, _imag + other._imag);
-            }
-
-            complex operator-(const complex &other) const {
-                return complex(_real - other._real, _imag - other._imag);
-            }
-
-            complex operator*(const complex &other) const {
-                auto real = _real * other._real - _imag * other._imag;
-                auto image = _imag * other._real + _real * other._imag;
-                return complex(real, image);
-            }
-
-            complex operator*(const Double& number) const {
-                return complex(_real * number, _imag * number);
-            }
-
-            complex operator/(const complex &other) const {
-                auto de = other._real.square() + other._imag.square();
-                auto real = _real * other._real + _imag * other._imag;
-                auto image = _imag * other._real - _real * other._imag;
-                return complex(real / de, image / de);
-            }
-
-            complex operator/(const Double& number) const {
-                return complex(_real / number, _imag / number);
-            }
-
             complex conjugate() const {
                 return complex(_real, -_imag);
             }
@@ -491,14 +462,55 @@ namespace oyoung {
             Double _real, _imag;
         };
 
-        template<typename OStream>
-        OStream &operator<<(OStream &os, const complex &comp) {
+        template <typename Char, typename CharTraits>
+        ::std::basic_ostream<Char, CharTraits> &operator<<(::std::basic_ostream<Char, CharTraits> &os, const complex &comp) {
             const auto &real = comp.real();
             const auto &image = comp.imag();
-            return os << oyoung::format("%1 %2 %3i")
+            os << oyoung::format("%1 %2 %3i")
                     .arg(real.ref())
                     .arg(image < 0 ? "-" : "+")
                     .arg(image.abs().ref()).to_string();
+            return os;
+        }
+
+
+
+
+        complex operator+(const complex &left, const complex &right)  {
+            return complex(left.real() + right.real(), left.imag() + right.imag());
+        }
+
+        complex operator-(const complex &left, const complex &right)  {
+            return complex(left.real() - right.real(), left.imag() - right.imag());
+        }
+
+        complex operator*(const complex &left, const complex &right)  {
+            auto real = left.real() * right.real() - left.imag() * right.imag();
+            auto image = left.imag() * right.real() + left.real() * right.imag();
+            return complex(real, image);
+        }
+
+        complex operator*(const complex &comp, const Double &number)  {
+            return complex(comp.real() * number, comp.imag() * number);
+        }
+
+        complex operator/(const complex &left, const complex &right)  {
+            auto de = right.real().square() + right.imag().square();
+            auto real = left.real() * right.real() + left.imag() * right.imag();
+            auto image = left.imag() * right.real() - left.real() * right.imag();
+            return complex(real / de, image / de);
+        }
+
+        complex operator/(const complex &comp, const Double& number) {
+            return complex(comp.real() / number, comp.imag() / number);
+        }
+
+        bool operator==(const complex& left, const complex& right) {
+            return left.real() == right.real() and left.imag() == right.imag();
+        }
+
+        bool operator!=(const complex& left, const complex& right) {
+            return left.real() != right.real() or left.imag() != right.imag();
         }
 
         namespace literals {
@@ -549,7 +561,7 @@ namespace oyoung {
 
         template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
         complex operator-(const T& left, const complex& right) {
-            return complex(left - right.real(), right.imag());
+            return complex(left - right.real(), -right.imag());
         }
 
         template<typename T, typename = typename std::enable_if<std::is_pod<T>::value>::type>
