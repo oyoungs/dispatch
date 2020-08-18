@@ -2,16 +2,23 @@ cmake_minimum_required(VERSION 2.8)
 project(dispatch)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pthread")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pthread")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(
+        ${PROJECT_SOURCE_DIR}/include
+)
+link_directories(
+        ${PROJECT_SOURCE_DIR}/lib
+        /usr/local/lib
+)
 
+add_subdirectory(extlibs/gtest)
 
 
 add_executable(any any_main.cc)
-
 add_executable(dispatch dispatch_main.cc)
 add_executable(cli cli_main.cc)
 add_executable(optional optional_main.cc)
@@ -28,10 +35,28 @@ add_executable(string_view string_view_main.cc)
 #add_executable(tcpserver tcp_server_main.cc)
 add_executable(tcpclient tcp_client_main.cc)
 #target_link_libraries(tcpserver pthread ev)
-target_link_libraries(tcpclient pthread)
+target_link_libraries(tcpclient
+#        pthread
+        )
 #target_link_libraries(dispatch pthread ev)
-target_link_libraries(gomain pthread)
+target_link_libraries(gomain
+#        pthread
+        )
 #target_link_libraries(cli pthread spdlog)
+target_link_libraries(range
+        gtest
+        gtest_main
+        )
+
+target_link_libraries(defer
+        gtest
+        gtest_main
+        )
+
+target_link_libraries(format
+        gtest
+        gtest_main
+        )
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+        DESTINATION include)

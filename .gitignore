@@ -1,5 +1,6 @@
 *.user
 bin/
+lib/
 build/
 .idea
 *.deb

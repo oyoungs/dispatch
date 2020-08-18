@@ -22,8 +22,8 @@ namespace oyoung {
         using will_set_function = std::function<bool(const_referennce_type)>;
         using did_set_function = std::function<void(const_referennce_type, const_referennce_type)>;
 
-        property(const_referennce_type val)
-                : _value(std::make_shared<value_type>(val)) {
+        property(value_type val)
+                : _value(std::make_shared<value_type>(std::move(val))) {
             _get = [=] () -> reference_type { return ref() ;};
             _set = [=] (const_referennce_type other) {
                 *_value = other;

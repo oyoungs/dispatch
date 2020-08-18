@@ -3,56 +3,36 @@
 //
 
 #include <oyoung/defer.hpp>
-#include <iostream>
+#include <gtest/gtest.h>
 
-struct Test {
+TEST(oyoung_defer, defer_for_func) {
 
-    explicit Test(int n): m_number(new int(n)) {
-        std::cout << "create number: " << n << std::endl;
-        defer [=] {
-            if(m_number) {
-                std::cout << "release number: " << n << std::endl;
-                delete  m_number;
-                m_number = nullptr;
-            }
+    USE_DEFER;
+
+
+    auto n {0};
+
+    defer [&] {
+        EXPECT_EQ(100, n);
+    };
+
+    n = 100;
+}
+
+TEST(oyoung_defer, defer_for_scope) {
+
+    auto n {0};
+
+    {
+        USE_DEFER;
+
+
+        defer [&] {
+            n = 0;
         };
+
+        n = 2;
     }
 
-    void clear() {
-
-        std::cout << "clear number: " <<  (m_number ? std::to_string(*m_number): "null") << std::endl;
-
-        delete  m_number;
-        m_number = nullptr;
-    }
-
-private:
-    USE_DEFER;
-    int *m_number{nullptr};
-};
-
-int  main(int, char**) {
-
-    USE_DEFER;
-
-    std::cout << "create one" << std::endl;
-
-    defer [=] {
-        std::cout << "destroy one" << std::endl;
-    };
-
-    std::cout << "create two" << std::endl;
-
-    defer [=] {
-        std::cout << "destroy two" << std::endl;
-    };
-
-    Test test1(1);
-
-    test1.clear();
-
-    Test test2(2);
-
-    defer_pop();
-
+    EXPECT_EQ(0, n);
 }

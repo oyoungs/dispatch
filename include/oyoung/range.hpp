@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 
+
 namespace oyoung {
 
     template <typename T>
@@ -18,7 +19,15 @@ namespace oyoung {
                 : m_begin(std::move(begin))
                 , m_end(std::move(end))
                 , m_step(std::move(step)) {
+            if (m_step == 0) {
+                throw std::invalid_argument("Unexpected step 0");
+            }
+
             if(begin > end) m_step = -m_step;
+        }
+
+        bool contains(const T& val) {
+            return val < m_end and (val - m_begin) % m_step == 0;
         }
 
         struct const_iterator {
