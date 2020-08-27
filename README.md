@@ -530,3 +530,26 @@ int main(int , char **) {
     return 0;
 }
 ```
+
+### 12. topic
+
+```cpp
+#include <oyoung/topic.hpp>
+#include <iostream>
+
+int main(int,char**) {
+
+    oyoung::topic::subscribe<bool>("success", [](bool success) {
+        std::cout << "success: " << success << std::endl;
+    });
+    /// ...
+
+    /// some failure
+    oyoung::topic::publish("success", false);
+
+    /// success
+    oyoung::topic::publish("success", true);
+
+    return 0;
+}
+```
