@@ -40,7 +40,7 @@ private:
     Manager() = default;
     
 private:
-    std::map<std::string, std::vector<any>> m_subscribers;
+    std::unordered_map<std::string, std::vector<any>> m_subscribers;
 };
 
 template<typename T>
