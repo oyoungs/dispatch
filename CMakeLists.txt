@@ -64,5 +64,5 @@ target_link_libraries(topic
         gtest_main
         )
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/oyoung
         DESTINATION include)
