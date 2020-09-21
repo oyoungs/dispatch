@@ -67,10 +67,30 @@ namespace oyoung {
 
     using locker = Locker;
 
+    template<typename Mutex>
+    struct lock_guard: std::lock_guard<Mutex> {
 
+        using super = std::lock_guard<Mutex>;
+
+        explicit lock_guard(Mutex & mutex)
+                : super(mutex) {
+
+        }
+
+
+        template <typename Call>
+        lock_guard&operator<<(const Call& call) {
+
+            if (call) call();
+
+            return *this;
+        }
+
+    };
 }
 
 
 #define lock(NAME) oyoung::locker(NAME) <<
+#define with_lock(mutex) oyoung::lock_guard<decltype(mutex)>(mutex) <<
 
 #endif //DISPATCH_LOCKER_HPP
