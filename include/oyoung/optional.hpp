@@ -15,14 +15,17 @@ namespace oyoung {
     struct optional {
 
         optional() {}
-        optional(const T& value): v(std::make_shared<T>(value)) {}
-        optional(T&& value): v(std::make_shared<T>(std::move(value))) {}
+        optional(T value): _M_has(true), _M_value(value) {}
 
-        optional(const optional& other): v(other.v) {}
-        optional(optional&& other): v(std::move(other.v)) {}
+        optional(const optional&) = delete;
+        optional(optional&& other)
+                : _M_has(std::move(other._M_has))
+                , _M_value(std::move(other._M_value)) {
+
+        }
 
         bool is_null() const {
-            return v == nullptr;
+            return not _M_has;
         }
 
         bool operator==(decltype(nullptr)) const  {
@@ -30,65 +33,54 @@ namespace oyoung {
         }
 
         bool operator!=(decltype(nullptr)) const  {
-            return !is_null();
+            return not is_null();
         }
 
         bool let(T& value) const {
-            return v ? (value = *v, true): false;
+            return _M_has ? (value = _M_value, true): false;
         }
 
-        optional&operator=(const T&value) {
-            if(v == nullptr || v.use_count() > 1) {
-                v = std::make_shared<T>(value);
-            } else {
-                *v = value;
-            }
-            return *this;
-        }
-
-        optional&operator=(T&& value) {
-            if(v == nullptr || v.use_count() > 1) {
-                v = std::make_shared<T>(std::move(value));
-            } else {
-                *v = std::move(value);
-            }
+        optional&operator=(T value) {
+            _M_has = true;
+            _M_value = std::move(value);
             return *this;
         }
 
         void swap(optional& other) noexcept {
-            v.swap(other.v);
+            std::swap(_M_has, other._M_has);
+            std::swap(_M_value, other._M_value);
         }
 
         operator T() const {
             if(is_null()) {
-                throw std::runtime_error("Null cannot be transform to value");
+                throw std::runtime_error("Nil of optional");
             }
-            return *v;
+            return _M_value;
+        }
+
+        void set() {
+            _M_has = true;
+        }
+
+        void set(T value) {
+            _M_has = true;
+            _M_value = std::move(value);
         }
 
         void clear() {
-            v.reset();
+            _M_has = false;
         }
 
         void assign(const T& value) {
-            *this = value;
+            _M_has = true;
+            _M_value = value;
         }
 
         T operator()(const T& def) {
-            return is_null() ? def: *v;
+            return is_null() ? def: _M_value;
         }
 
-        T& operator()() {
-            if(is_null()) {
-                v = std::make_shared<T>();
-            }
-            return *v;
-        }
 
-        const T& operator()() const {
-            static const T def {};
-            return v ? *v : def;
-        }
 
         bool operator!() const {
             return  is_null();
@@ -96,18 +88,21 @@ namespace oyoung {
 
 
         T& operator*() {
-            if(is_null()) {
-                v = std::make_shared<T>();
+            if (not _M_has) {
+                throw std::runtime_error("Nil of optional");
             }
-            return *v;
+            return _M_value;
         }
 
         const T& operator*() const {
-            static const T def {};
-            return v ? *v : def;
+            if (not _M_has) {
+                throw std::runtime_error("Nil of optional");
+            }
+            return _M_value;
         }
     private:
-        std::shared_ptr<T> v;
+        bool _M_has;
+        T _M_value;
     };
 
     template <typename T>

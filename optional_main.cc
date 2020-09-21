@@ -25,10 +25,11 @@ int main(int argc, char** argv)
     n.assign(101);
 
     if(nullptr != n) {
-        std::cout << n() << std::endl;
+        std::cout << *n << std::endl;
     }
 
-    dict()["name"] = 1000;
+    dict.set();
+
     (*dict)["age"] = 200;
     (*dict)["number"] = 30;
 
