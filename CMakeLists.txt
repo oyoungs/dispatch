@@ -32,6 +32,7 @@ add_executable(locker locker_main.cc)
 add_executable(range range_main.cc)
 add_executable(string_view string_view_main.cc)
 add_executable(topic topic_main.cc)
+add_executable(reverse reverse_main.cc)
 
 #add_executable(tcpserver tcp_server_main.cc)
 add_executable(tcpclient tcp_client_main.cc)
@@ -64,5 +65,9 @@ target_link_libraries(topic
         gtest_main
         )
 
+target_link_libraries(reverse
+        gtest
+        gtest_main
+        )
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/oyoung
         DESTINATION include)
