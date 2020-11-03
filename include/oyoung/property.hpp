@@ -33,11 +33,22 @@ namespace oyoung {
         value_type value() const {
             return _computed ? _computed(): _value ? *_value : _get();
         }
+
         reference_type ref() {
             return _value ? *_value : _get();
         }
+
         const_referennce_type ref() const {
             return _value ? *_value : _get();
+        }
+
+        value_type *operator->() {
+            return _value ? _value.get() : &_get();
+        }
+
+
+        const value_type *operator->() const {
+            return _value ? _value.get() : &_get();
         }
 
 
@@ -116,6 +127,41 @@ namespace oyoung {
             return *this;
         }
 
+        template <typename U, typename = decltype(T() + U())>
+        property&operator+=(const U& val) {
+            assign(T(value() + val));
+            return *this;
+        };
+        template <typename U, typename = decltype(T() - U())>
+        property&operator-=(const U& val) {
+            assign(T(value() - val));
+            return *this;
+        };
+        template <typename U, typename = decltype(T() * U())>
+        property&operator*=(const U& val) {
+            assign(T(value() * val));
+            return *this;
+        };
+
+        template <typename U, typename = decltype(T() / U())>
+        property&operator/=(const U& val) {
+            assign(T(value() / val));
+            return *this;
+        };
+
+        template <typename U, typename = decltype(T() << U())>
+        property&operator<<=(const U& val) {
+            assign(T(value() << val));
+            return *this;
+        };
+        template <typename U, typename = decltype(T() >> U())>
+        property&operator>>=(const U& val) {
+            assign(T(value() << val));
+            return *this;
+        };
+
+
+
         operator value_type() const {
             return  _computed ? _computed(): _get ? _get() : value_type{};
         }
@@ -139,6 +185,125 @@ namespace oyoung {
         std::function<value_type()> _computed{};
         std::shared_ptr<value_type> _value;
     };
+
+    template <typename T, typename U>
+    decltype(T() < U()) operator<(const property<T>& left, const U& right) {
+        return left.value() < right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() < U()) operator<(const T& left, const property<U>& right) {
+        return left < right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() <= U()) operator<=(const property<T>& left, const U& right) {
+        return left.value() <= right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() <= U()) operator<=(const T& left, const property<U>& right) {
+        return left <= right.value();
+    }
+    template <typename T, typename U>
+    decltype(T() > U()) operator>(const property<T>& left, const U& right) {
+        return left.value() > right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() > U()) operator>(const T& left, const property<U>& right) {
+        return left > right.value();
+    }
+
+
+    template <typename T, typename U>
+    decltype(T() >= U()) operator>=(const property<T>& left, const T& right) {
+        return left.value() >= right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() >= U()) operator>=(const T& left, const property<T>& right) {
+        return left >= right.value();
+    }
+    template <typename T, typename U>
+    decltype(T() == U()) operator==(const property<T>& left, const T& right) {
+        return left.value() == right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() == U()) operator==(const T& left, const property<T>& right) {
+        return left == right.value();
+    }
+    template <typename T, typename U>
+    decltype(T() != U()) operator!=(const property<T>& left, const T& right) {
+        return left.value() != right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() != U()) operator!=(const T& left, const property<T>& right) {
+        return left != right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() + U()) operator+(const property<T>& left, const U& right) {
+        return left.value() + right;
+    }
+
+
+    template <typename T, typename U>
+    decltype(T() + U()) operator+(const T& left, const property<U>& right) {
+        return left + right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() - U()) operator-(const property<T>& left, const U& right) {
+        return left.value() - right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() - U()) operator-(const T& left, const property<U>& right) {
+        return left - right.value();
+    }
+    template <typename T, typename U>
+    decltype(T() * U()) operator*(const property<T>& left, const U& right) {
+        return left.value() * right;
+    }
+
+
+    template <typename T, typename U>
+    decltype(T() * U()) operator*(const T& left, const property<U>& right) {
+        return left * right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() / U()) operator/(const property<T>& left, const U& right) {
+        return left.value() / right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() / U()) operator/(const T& left, const property<U>& right) {
+        return left / right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() << U()) operator<<(const property<T>& left, const U& right) {
+        return left.value() << right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() << U()) operator<<(const T& left, const property<U>& right) {
+        return left << right.value();
+    }
+
+    template <typename T, typename U>
+    decltype(T() >> U()) operator>>(const property<T>& left, const U& right) {
+        return left.value() >> right;
+    }
+
+    template <typename T, typename U>
+    decltype(T() >> U()) operator>>(const T& left, const property<U>& right) {
+        return left >> right.value();
+    }
 
     template <typename IStream, typename T>
     IStream& operator>>(IStream& in, property<T>& prop) {

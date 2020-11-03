@@ -78,8 +78,8 @@ namespace oyoung {
         }
 
 
-        template <typename Call>
-        lock_guard&operator<<(const Call& call) {
+
+        lock_guard&operator<<(const std::function<void()>& call) {
 
             if (call) call();
 
@@ -89,8 +89,12 @@ namespace oyoung {
     };
 }
 
-
+#ifndef lock
 #define lock(NAME) oyoung::locker(NAME) <<
+#endif
+
+#ifndef with_lock
 #define with_lock(mutex) oyoung::lock_guard<decltype(mutex)>(mutex) <<
+#endif
 
 #endif //DISPATCH_LOCKER_HPP
